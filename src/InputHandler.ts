@@ -1977,7 +1977,7 @@ export class InputHandler implements IInputHandler {
    *   the value of the active column when the terminal receives an HTS.
    */
   public tabSet(): void {
-    this._overflowRight = false;
+    // this._overflowRight = false; // HTS does not reset wrapAround
     this._terminal.tabSet();  // FIXME: save to move the implementation from terminal?
   }
 
