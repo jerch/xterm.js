@@ -2182,6 +2182,7 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
     if (this.viewport) {
       this.viewport.syncScrollArea();
     }
+    this._inputHandler._overflowRight = false;
   }
 
 

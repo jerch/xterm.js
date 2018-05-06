@@ -109,12 +109,14 @@ class DECRQSS implements IDcsHandler {
  */
 export class InputHandler implements IInputHandler {
   private _surrogateHigh: string;
+  public _overflowRight: boolean;
 
   constructor(
       private _terminal: any,
       private _parser: IEscapeSequenceParser = new EscapeSequenceParser())
   {
     this._surrogateHigh = '';
+    this._overflowRight = false;
 
     /**
      * custom fallback handlers
@@ -310,6 +312,8 @@ export class InputHandler implements IInputHandler {
     let low;
     let chWidth;
     const buffer = this._terminal.buffer;
+    buffer.x += (this._overflowRight && this._terminal.wraparoundMode && !this._terminal.insertMode) ? 1 : 0;
+    this._overflowRight = false;
     for (let i = start; i < end; ++i) {
       ch = data.charAt(i);
       code = data.charCodeAt(i);
@@ -415,6 +419,12 @@ export class InputHandler implements IInputHandler {
         buffer.x++;
       }
     }
+    if (buffer.x >= this._terminal.cols) {
+      buffer.x = this._terminal.cols - 1;
+      this._overflowRight = true;
+    } else {
+      this._overflowRight = false;
+    }
   }
 
   /**
@@ -422,6 +432,7 @@ export class InputHandler implements IInputHandler {
    * Bell (Ctrl-G).
    */
   public bell(): void {
+    this._overflowRight = false;
     this._terminal.bell();
   }
 
@@ -430,6 +441,7 @@ export class InputHandler implements IInputHandler {
    * Line Feed or New Line (NL).  (LF  is Ctrl-J).
    */
   public lineFeed(): void {
+    this._overflowRight = false;
     // make buffer local for faster access
     const buffer = this._terminal.buffer;
 
@@ -458,6 +470,7 @@ export class InputHandler implements IInputHandler {
    * Carriage Return (Ctrl-M).
    */
   public carriageReturn(): void {
+    this._overflowRight = false;
     this._terminal.buffer.x = 0;
   }
 
@@ -466,6 +479,7 @@ export class InputHandler implements IInputHandler {
    * Backspace (Ctrl-H).
    */
   public backspace(): void {
+    this._overflowRight = false;
     if (this._terminal.buffer.x > 0) {
       this._terminal.buffer.x--;
     }
@@ -476,6 +490,7 @@ export class InputHandler implements IInputHandler {
    * Horizontal Tab (HT) (Ctrl-I).
    */
   public tab(): void {
+    this._overflowRight = false;
     const originalX = this._terminal.buffer.x;
     this._terminal.buffer.x = this._terminal.buffer.nextStop();
     if (this._terminal.options.screenReaderMode) {
@@ -489,6 +504,7 @@ export class InputHandler implements IInputHandler {
    * G1 character set.
    */
   public shiftOut(): void {
+    this._overflowRight = false;
     this._terminal.setgLevel(1);
   }
 
@@ -498,6 +514,7 @@ export class InputHandler implements IInputHandler {
    * character set (the default).
    */
   public shiftIn(): void {
+    this._overflowRight = false;
     this._terminal.setgLevel(0);
   }
 
@@ -506,6 +523,7 @@ export class InputHandler implements IInputHandler {
    * Insert Ps (Blank) Character(s) (default = 1) (ICH).
    */
   public insertChars(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) param = 1;
 
@@ -527,6 +545,7 @@ export class InputHandler implements IInputHandler {
    * Cursor Up Ps Times (default = 1) (CUU).
    */
   public cursorUp(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -542,6 +561,7 @@ export class InputHandler implements IInputHandler {
    * Cursor Down Ps Times (default = 1) (CUD).
    */
   public cursorDown(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -561,6 +581,7 @@ export class InputHandler implements IInputHandler {
    * Cursor Forward Ps Times (default = 1) (CUF).
    */
   public cursorForward(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -576,6 +597,7 @@ export class InputHandler implements IInputHandler {
    * Cursor Backward Ps Times (default = 1) (CUB).
    */
   public cursorBackward(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -596,6 +618,7 @@ export class InputHandler implements IInputHandler {
    * same as CSI Ps B ?
    */
   public cursorNextLine(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -614,6 +637,7 @@ export class InputHandler implements IInputHandler {
    * reuse CSI Ps A ?
    */
   public cursorPrecedingLine(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -631,6 +655,7 @@ export class InputHandler implements IInputHandler {
    * Cursor Character Absolute  [column] (default = [row,1]) (CHA).
    */
   public cursorCharAbsolute(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -643,6 +668,7 @@ export class InputHandler implements IInputHandler {
    * Cursor Position [row;column] (default = [1,1]) (CUP).
    */
   public cursorPosition(params: number[]): void {
+    this._overflowRight = false;
     let col: number;
     let row: number = params[0] - 1;
 
@@ -673,6 +699,7 @@ export class InputHandler implements IInputHandler {
    *   Cursor Forward Tabulation Ps tab stops (default = 1) (CHT).
    */
   public cursorForwardTab(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0] || 1;
     while (param--) {
       this._terminal.buffer.x = this._terminal.buffer.nextStop();
@@ -692,6 +719,7 @@ export class InputHandler implements IInputHandler {
    *     Ps = 2  -> Selective Erase All.
    */
   public eraseInDisplay(params: number[]): void {
+    this._overflowRight = false;
     let j;
     switch (params[0]) {
       case 0:
@@ -738,6 +766,7 @@ export class InputHandler implements IInputHandler {
    *     Ps = 2  -> Selective Erase All.
    */
   public eraseInLine(params: number[]): void {
+    this._overflowRight = false;
     switch (params[0]) {
       case 0:
         this._terminal.eraseRight(this._terminal.buffer.x, this._terminal.buffer.y);
@@ -756,6 +785,7 @@ export class InputHandler implements IInputHandler {
    * Insert Ps Line(s) (default = 1) (IL).
    */
   public insertLines(params: number[]): void {
+    this._overflowRight = false;
     let param: number = params[0];
     if (param < 1) {
       param = 1;
@@ -785,6 +815,7 @@ export class InputHandler implements IInputHandler {
    * Delete Ps Line(s) (default = 1) (DL).
    */
   public deleteLines(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -815,6 +846,7 @@ export class InputHandler implements IInputHandler {
    * Delete Ps Character(s) (default = 1) (DCH).
    */
   public deleteChars(params: number[]): void {
+    this._overflowRight = false;
     let param: number = params[0];
     if (param < 1) {
       param = 1;
@@ -837,6 +869,7 @@ export class InputHandler implements IInputHandler {
    * CSI Ps S  Scroll up Ps lines (default = 1) (SU).
    */
   public scrollUp(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0] || 1;
 
     // make buffer local for faster access
@@ -855,6 +888,7 @@ export class InputHandler implements IInputHandler {
    * CSI Ps T  Scroll down Ps lines (default = 1) (SD).
    */
   public scrollDown(params: number[], collect?: string): void {
+    this._overflowRight = false;
     if (params.length < 2 && !collect) {
       let param = params[0] || 1;
 
@@ -876,6 +910,7 @@ export class InputHandler implements IInputHandler {
    * Erase Ps Character(s) (default = 1) (ECH).
    */
   public eraseChars(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -897,6 +932,7 @@ export class InputHandler implements IInputHandler {
    * CSI Ps Z  Cursor Backward Tabulation Ps tab stops (default = 1) (CBT).
    */
   public cursorBackwardTab(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0] || 1;
 
     // make buffer local for faster access
@@ -912,6 +948,7 @@ export class InputHandler implements IInputHandler {
    *   [column] (default = [row,1]) (HPA).
    */
   public charPosAbsolute(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -928,6 +965,7 @@ export class InputHandler implements IInputHandler {
    * reuse CSI Ps C ?
    */
   public HPositionRelative(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -942,6 +980,7 @@ export class InputHandler implements IInputHandler {
    * CSI Ps b  Repeat the preceding graphic character Ps times (REP).
    */
   public repeatPrecedingCharacter(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0] || 1;
 
     // make buffer local for faster access
@@ -993,6 +1032,7 @@ export class InputHandler implements IInputHandler {
    *   vim responds with ^[[?0c or ^[[?1c after the terminal's response (?)
    */
   public sendDeviceAttributes(params: number[], collect?: string): void {
+    this._overflowRight = false;
     if (params[0] > 0) {
       return;
     }
@@ -1026,6 +1066,7 @@ export class InputHandler implements IInputHandler {
    *   [row] (default = [1,column])
    */
   public linePosAbsolute(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -1042,6 +1083,7 @@ export class InputHandler implements IInputHandler {
    * reuse CSI Ps B ?
    */
   public VPositionRelative(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param < 1) {
       param = 1;
@@ -1062,6 +1104,7 @@ export class InputHandler implements IInputHandler {
    *   [1,1]) (HVP).
    */
   public HVPosition(params: number[]): void {
+    this._overflowRight = false;
     if (params[0] < 1) params[0] = 1;
     if (params[1] < 1) params[1] = 1;
 
@@ -1085,6 +1128,7 @@ export class InputHandler implements IInputHandler {
    *   http://vt100.net/annarbor/aaa-ug/section6.html
    */
   public tabClear(params: number[]): void {
+    this._overflowRight = false;
     let param = params[0];
     if (param <= 0) {
       delete this._terminal.buffer.tabs[this._terminal.buffer.x];
@@ -1180,6 +1224,7 @@ export class InputHandler implements IInputHandler {
    *   http: *vt100.net/docs/vt220-rm/chapter4.html
    */
   public setMode(params: number[], collect?: string): void {
+    this._overflowRight = false;
     if (params.length > 1) {
       for (let i = 0; i < params.length; i++) {
         this.setMode([params[i]]);
@@ -1374,6 +1419,7 @@ export class InputHandler implements IInputHandler {
    *     Ps = 2 0 0 4  -> Reset bracketed paste mode.
    */
   public resetMode(params: number[], collect?: string): void {
+    this._overflowRight = false;
     if (params.length > 1) {
       for (let i = 0; i < params.length; i++) {
         this.resetMode([params[i]]);
@@ -1529,6 +1575,7 @@ export class InputHandler implements IInputHandler {
    *     Ps.
    */
   public charAttributes(params: number[]): void {
+    this._overflowRight = false;
     // Optimize a single SGR0.
     if (params.length === 1 && params[0] === 0) {
       this._terminal.curAttr = this._terminal.defAttr;
@@ -1675,6 +1722,7 @@ export class InputHandler implements IInputHandler {
    *   CSI ? 5 0  n  No Locator, if not.
    */
   public deviceStatus(params: number[], collect?: string): void {
+    this._overflowRight = false;
     if (!collect) {
       switch (params[0]) {
         case 5:
@@ -1727,6 +1775,7 @@ export class InputHandler implements IInputHandler {
    * http://vt100.net/docs/vt220-rm/table4-10.html
    */
   public softReset(params: number[], collect?: string): void {
+    this._overflowRight = false;
     if (collect === '!') {
       this._terminal.cursorHidden = false;
       this._terminal.insertMode = false;
@@ -1756,6 +1805,7 @@ export class InputHandler implements IInputHandler {
    *   Ps = 6  -> steady bar (xterm).
    */
   public setCursorStyle(params?: number[], collect?: string): void {
+    this._overflowRight = false;
     if (collect === ' ') {
       const param = params[0] < 1 ? 1 : params[0];
       switch (param) {
@@ -1784,6 +1834,7 @@ export class InputHandler implements IInputHandler {
    * CSI ? Pm r
    */
   public setScrollRegion(params: number[], collect?: string): void {
+    this._overflowRight = false;
     if (collect) return;
     this._terminal.buffer.scrollTop = (params[0] || 1) - 1;
     this._terminal.buffer.scrollBottom = (params[1] && params[1] <= this._terminal.rows ? params[1] : this._terminal.rows) - 1;
@@ -1798,6 +1849,7 @@ export class InputHandler implements IInputHandler {
    *   Save cursor (ANSI.SYS).
    */
   public saveCursor(params: number[]): void {
+    this._overflowRight = false;
     this._terminal.buffer.savedX = this._terminal.buffer.x;
     this._terminal.buffer.savedY = this._terminal.buffer.y;
   }
@@ -1809,6 +1861,7 @@ export class InputHandler implements IInputHandler {
    *   Restore cursor (ANSI.SYS).
    */
   public restoreCursor(params: number[]): void {
+    this._overflowRight = false;
     this._terminal.buffer.x = this._terminal.buffer.savedX || 0;
     this._terminal.buffer.y = this._terminal.buffer.savedY || 0;
   }
@@ -1820,6 +1873,7 @@ export class InputHandler implements IInputHandler {
    *   Proxy to set window title. Icon name is not supported.
    */
   public setTitle(data: string): void {
+    this._overflowRight = false;
     this._terminal.handleTitle(data);
   }
 
@@ -1830,6 +1884,7 @@ export class InputHandler implements IInputHandler {
    *   Moves cursor to first position on next line.
    */
   public nextLine(): void {
+    this._overflowRight = false;
     this._terminal.buffer.x = 0;
     this.index();
   }
@@ -1840,6 +1895,7 @@ export class InputHandler implements IInputHandler {
    *   Enables the numeric keypad to send application sequences to the host.
    */
   public keypadApplicationMode(): void {
+    this._overflowRight = false;
     this._terminal.log('Serial port requested application keypad.');
     this._terminal.applicationKeypad = true;
     if (this._terminal.viewport) {
@@ -1853,6 +1909,7 @@ export class InputHandler implements IInputHandler {
    *   Enables the keypad to send numeric characters to the host.
    */
   public keypadNumericMode(): void {
+    this._overflowRight = false;
     this._terminal.log('Switching back to normal keypad.');
     this._terminal.applicationKeypad = false;
     if (this._terminal.viewport) {
@@ -1867,6 +1924,7 @@ export class InputHandler implements IInputHandler {
    *   therefore ESC % G does the same.
    */
   public selectDefaultCharset(): void {
+    this._overflowRight = false;
     this._terminal.setgLevel(0);
     this._terminal.setgCharset(0, DEFAULT_CHARSET); // US (default)
   }
@@ -1888,6 +1946,7 @@ export class InputHandler implements IInputHandler {
    *   Designate G3 Character Set (VT300). C = A  -> ISO Latin-1 Supplemental. - Supported?
    */
   public selectCharset(collectAndFlag: string): void {
+    this._overflowRight = false;
     if (collectAndFlag.length !== 2) return this.selectDefaultCharset();
     if (collectAndFlag[0] === '/') return;  // FIXME: Is this supported?
     this._terminal.setgCharset(GLEVEL[collectAndFlag[0]], CHARSETS[collectAndFlag[1]] || DEFAULT_CHARSET);
@@ -1900,6 +1959,7 @@ export class InputHandler implements IInputHandler {
    *   Moves the cursor down one line in the same column.
    */
   public index(): void {
+    this._overflowRight = false;
     this._terminal.index();  // FIXME: save to move the implementation from terminal?
   }
 
@@ -1911,6 +1971,7 @@ export class InputHandler implements IInputHandler {
    *   the value of the active column when the terminal receives an HTS.
    */
   public tabSet(): void {
+    this._overflowRight = false;
     this._terminal.tabSet();  // FIXME: save to move the implementation from terminal?
   }
 
@@ -1922,6 +1983,7 @@ export class InputHandler implements IInputHandler {
    *   the page scrolls down.
    */
   public reverseIndex(): void {
+    this._overflowRight = false;
     this._terminal.reverseIndex();  // FIXME: save to move the implementation from terminal?
   }
 
@@ -1931,6 +1993,7 @@ export class InputHandler implements IInputHandler {
    *   Reset to initial state.
    */
   public reset(): void {
+    this._overflowRight = false;
     this._terminal.reset();  // FIXME: save to move the implementation from terminal?
   }
 
@@ -1945,6 +2008,7 @@ export class InputHandler implements IInputHandler {
    *   you use another locking shift. (partly supported)
    */
   public setgLevel(level: number): void {
+    this._overflowRight = false;
     this._terminal.setgLevel(level);  // FIXME: save to move the implementation from terminal?
   }
 }

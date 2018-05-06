@@ -103,8 +103,8 @@ if (os.platform() !== 'win32') {
     // only successful tests for now
     let skipFilename = [
       // 't0008-BS.in',
-      // 't0014-CAN.in',
-      // 't0015-SUB.in',
+      't0014-CAN.in',
+      't0015-SUB.in',
       't0017-SD.in',
       't0035-HVP.in',
       't0040-REP.in',

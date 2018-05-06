@@ -911,8 +911,8 @@ describe('term.js addons', () => {
       for (let i = 0xDC00; i <= 0xDCFF; ++i) {
         term.buffer.x = term.cols - 1;
         term.write(high + String.fromCharCode(i));
-        expect(term.buffer.lines.get(0)[term.buffer.x - 1][CHAR_DATA_CHAR_INDEX]).eql(high + String.fromCharCode(i));
-        expect(term.buffer.lines.get(0)[term.buffer.x - 1][CHAR_DATA_CHAR_INDEX].length).eql(2);
+        expect(term.buffer.lines.get(0)[term.cols - 1][CHAR_DATA_CHAR_INDEX]).eql(high + String.fromCharCode(i));
+        expect(term.buffer.lines.get(0)[term.cols - 1][CHAR_DATA_CHAR_INDEX].length).eql(2);
         expect(term.buffer.lines.get(1)[0][CHAR_DATA_CHAR_INDEX]).eql(' ');
         term.reset();
       }
