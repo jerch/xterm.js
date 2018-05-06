@@ -490,7 +490,7 @@ export class InputHandler implements IInputHandler {
    * Horizontal Tab (HT) (Ctrl-I).
    */
   public tab(): void {
-    this._overflowRight = false;
+    // this._overflowRight = false; // HT does not reset wrapAround
     const originalX = this._terminal.buffer.x;
     this._terminal.buffer.x = this._terminal.buffer.nextStop();
     if (this._terminal.options.screenReaderMode) {
