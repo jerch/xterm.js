@@ -268,6 +268,7 @@ export class InputHandler implements IInputHandler {
       this._parser.setEscHandler('.' + flag, () => this.selectCharset('.' + flag));
       this._parser.setEscHandler('/' + flag, () => this.selectCharset('/' + flag)); // FIXME: supported?
     }
+    this._parser.setEscHandler('#8', () => this.screenAlignmentPattern());
 
     /**
      * error handler
@@ -2016,5 +2017,24 @@ export class InputHandler implements IInputHandler {
   public setgLevel(level: number): void {
     this._overflowRight = false;
     this._terminal.setgLevel(level);  // FIXME: save to move the implementation from terminal?
+  }
+
+  /**
+   * ESC # 8
+   *   DEC mnemonic: DECALN (https://vt100.net/docs/vt510-rm/DECALN.html)
+   *   This control function fills the complete screen area with
+   *   a test pattern (E) used for adjusting screen alignment.
+   */
+  public screenAlignmentPattern(): void {
+    this.cursorPosition([1, 1]);
+    const buffer = this._terminal.buffer;
+    for (let yOffset = 0; yOffset < this._terminal.rows; ++yOffset) {
+      let row = buffer.y + buffer.ybase + yOffset;
+      for (let col = 0; col < this._terminal.cols; ++col) {
+        buffer.lines.get(row)[col] = [this._terminal.curAttr, 'E', 1, 'E'.charCodeAt(0)];
+      }
+      this._terminal.updateRange(buffer.y + yOffset);
+    }
+    this.cursorPosition([1, 1]);
   }
 }
