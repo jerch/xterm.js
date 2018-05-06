@@ -841,6 +841,8 @@ export class InputHandler implements IInputHandler {
     // this.maxRange();
     this._terminal.updateRange(buffer.y);
     this._terminal.updateRange(buffer.scrollBottom);
+
+    buffer.x = 0; // see https://vt100.net/docs/vt220-rm/chapter4.html - vt220 only?
   }
 
   /**
