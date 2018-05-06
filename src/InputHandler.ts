@@ -699,7 +699,7 @@ export class InputHandler implements IInputHandler {
    *   Cursor Forward Tabulation Ps tab stops (default = 1) (CHT).
    */
   public cursorForwardTab(params: number[]): void {
-    this._overflowRight = false;
+    // this._overflowRight = false; // CHT does not reset wrapAround
     let param = params[0] || 1;
     while (param--) {
       this._terminal.buffer.x = this._terminal.buffer.nextStop();

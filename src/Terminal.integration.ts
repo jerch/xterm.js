@@ -124,7 +124,7 @@ if (os.platform() !== 'win32') {
       't0077-DECSTBM_quirks.in',
       // 't0080-HT.in',
       // 't0082-HTS.in',
-      't0083-CHT.in',
+      // 't0083-CHT.in',
       't0084-CBT.in',
       't0090-alt_screen.in',
       't0091-alt_screen_ED3.in',
