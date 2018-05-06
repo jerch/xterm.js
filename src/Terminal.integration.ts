@@ -106,7 +106,7 @@ if (os.platform() !== 'win32') {
       // 't0014-CAN.in',
       // 't0015-SUB.in',
       // 't0017-SD.in',
-      't0035-HVP.in',
+      // 't0035-HVP.in',
       't0040-REP.in',
       // 't0050-ICH.in',
       't0051-IL.in',

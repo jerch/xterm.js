@@ -1106,6 +1106,7 @@ export class InputHandler implements IInputHandler {
    */
   public HVPosition(params: number[]): void {
     this._overflowRight = false;
+    if (params.length < 2) params.push(1);
     if (params[0] < 1) params[0] = 1;
     if (params[1] < 1) params[1] = 1;
 
