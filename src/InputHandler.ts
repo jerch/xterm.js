@@ -869,7 +869,7 @@ export class InputHandler implements IInputHandler {
    * CSI Ps S  Scroll up Ps lines (default = 1) (SU).
    */
   public scrollUp(params: number[]): void {
-    this._overflowRight = false;
+    // this._overflowRight = false; // SD does not reset wrap setting in xterm
     let param = params[0] || 1;
 
     // make buffer local for faster access
@@ -879,6 +879,7 @@ export class InputHandler implements IInputHandler {
       buffer.lines.splice(buffer.ybase + buffer.scrollTop, 1);
       buffer.lines.splice(buffer.ybase + buffer.scrollBottom, 0, this._terminal.blankLine());
     }
+
     // this.maxRange();
     this._terminal.updateRange(buffer.scrollTop);
     this._terminal.updateRange(buffer.scrollBottom);
@@ -888,7 +889,7 @@ export class InputHandler implements IInputHandler {
    * CSI Ps T  Scroll down Ps lines (default = 1) (SD).
    */
   public scrollDown(params: number[], collect?: string): void {
-    this._overflowRight = false;
+    // this._overflowRight = false; // SD does not reset wrap setting in xterm
     if (params.length < 2 && !collect) {
       let param = params[0] || 1;
 
@@ -1128,7 +1129,7 @@ export class InputHandler implements IInputHandler {
    *   http://vt100.net/annarbor/aaa-ug/section6.html
    */
   public tabClear(params: number[]): void {
-    this._overflowRight = false;
+    // this._overflowRight = false; // tab clear does not reset wrapping in xterm
     let param = params[0];
     if (param <= 0) {
       delete this._terminal.buffer.tabs[this._terminal.buffer.x];
