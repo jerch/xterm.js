@@ -107,7 +107,7 @@ if (os.platform() !== 'win32') {
       // 't0015-SUB.in',
       // 't0017-SD.in',
       // 't0035-HVP.in',
-      't0040-REP.in',
+      't0040-REP.in',     /** not cancelled after other function */
       // 't0050-ICH.in',
       // 't0051-IL.in',
       // 't0052-DL.in',
@@ -122,14 +122,14 @@ if (os.platform() !== 'win32') {
       't0075-DECSTBM_CUU_CUD.in',
       't0076-DECSTBM_IL_DL.in',
       't0077-DECSTBM_quirks.in',
-      't0080-HT.in',
+      // 't0080-HT.in',
       't0082-HTS.in',
       't0083-CHT.in',
       't0084-CBT.in',
       't0090-alt_screen.in',
       't0091-alt_screen_ED3.in',
       't0092-alt_screen_DECSC.in',
-      't0100-IRM.in',
+      't0100-IRM.in',   /** combined test with REP, which currently does not respect wrapAround */
       't0101-NLM.in',
       't0103-reverse_wrap.in',
       't0504-vim.in'
