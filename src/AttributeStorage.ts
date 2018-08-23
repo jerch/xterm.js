@@ -400,8 +400,13 @@ export interface IColorRGB {
 /**
  * Attributes class.
  * Class to hold the terminal cell attributes.
+ * Most attributes are held as bitmask values in `Attributes.flags` and
+ * can be accesses either through the provided methods or by bitwise operations.
+ * The latter typically runs much faster, for time critial code the bitwise
+ * access should be preferred (e.g. in the renderer,
+ * where those values will be read over and over).
  *
- * Single bit attributes:
+ * Single bit attributes, example with BOLD:
  *    read:   `isBold()`, equivalent to `Attributes.flags & Flags.BOLD`
  *    write:  `setBold(true|false)`
  *
@@ -410,18 +415,29 @@ export interface IColorRGB {
  *    check specific value: `getFGMode() == FGMode.RGB`
  *    write:  `setFGMode(FGMode.P256)`
  *
+ * There are different color modes:
+ *  - DEFAULT:  no color meaning at all, just indicates to use the default color
+ *              set elsewhere as default color
+ *  - P16    :  colors for the 2x 8-color palettes (normal and bright)
+ *  - P256   :  256 colors palette, value should be in 0..255
+ *  - RGB    :  RGB color, value should be a 4 byte integer as
+ *              `red << 16 | green << 8 | blue` with is equivalent to this
+ *              byte layout: [ unused | red | green | blue ]
+ *              the channel values should be in 0..255
+ *
  * Colors:
  *    read:   `getFG()`
  *    write:  `setFG(value)`
- * Colors are read and written color mode dependent. It is not possible to set
- * a color for a different color mode than the currently selected.
+ * The way colors are read and written is color mode dependent. It is not possible
+ * to set a color for a different color mode than the currently selected. Note that
+ * colors are not saved separately for different modes (P16 will overwrite P256),
+ * and switching to RGB will delete a palette color that might have been set before.
  * For color mode 'DEFAULT' read always returns 0 and write is a NOOP.
  * For color mode 'P16' and 'P256' the colors are saved along with the single bit
  * attributes in `flags` as 8 bit values. For 'RGB' the 32 bit integer properties
  * `fg` and `bg` are used. To get or set their color channels separately, use the
- * convenient static methods `toRGB` and `fromRGB` to convert the 32 bit numbers.
- * Alternatively alter the numbers directly, their byte layout is:
- *    [ unused | red | green | blue ]
+ * static convenient methods `toRGB` and `fromRGB` to ensure the correct byte layout
+ * of the 32 bit numbers.
  */
 export class Attributes {
   static toRGB(value: number): IColorRGB {
@@ -453,9 +469,13 @@ export class Attributes {
   getBGMode(): BGMode { return this.flags & Flags.BG_MODE; }
   setFGMode(mode: FGMode): void {
     this.flags = this.flags & ~FGMode.RGB | mode;
+    // zero fg in flags for RGB to avoid useless nodes in tree
+    if (mode == FGMode.RGB) this.flags &= ~Flags.FG;
   }
   setBGMode(mode: BGMode): void {
     this.flags = this.flags & ~BGMode.RGB | mode;
+    // zero bg in flags for RGB to avoid useless nodes in tree
+    if (mode == BGMode.RGB) this.flags &= ~Flags.BG;
   }
   getFGModeName(): string { return FGModeName[this.flags & Flags.FG_MODE]; }
   getBGModeName(): string { return BGModeName[this.flags & Flags.BG_MODE]; }
