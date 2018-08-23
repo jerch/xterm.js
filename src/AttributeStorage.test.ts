@@ -28,7 +28,6 @@ function treeAssert(tree: AttributeTree, root: Address): number {
   if (M[root + EN.COLOR]) {
     if (ln && M[ln + EN.COLOR] && rn && M[rn + EN.COLOR]) {
       throw new Error('red violation');
-      return 0;
     }
   }
   lh = treeAssert(tree, ln);

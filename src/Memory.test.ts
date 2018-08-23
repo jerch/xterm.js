@@ -36,7 +36,7 @@ describe('Memory', function (): void {
     });
     it('free', function (): void {
       const p1 = mem.alloc(13); // 4 slots
-      const p2 = mem.alloc(23); // 6 slots
+      mem.alloc(23);            // 6 slots
       const p3 = mem.alloc(65); // 17 slots
       chai.expect(mem.sp).equals((mem.RESERVED_BYTES >>> 2) + 4 + 6 + 17);
       mem.free(p3);
