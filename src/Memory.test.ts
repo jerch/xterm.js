@@ -306,7 +306,7 @@ describe('Memory', function (): void {
 // example with primitve types
 class Example1 extends ctypes.Structure {
   static typename = 'Example1';
-  static _fields_: [string, ctypes.ICTypeConstructor<any>][] = [
+  static fields: [string, ctypes.ICTypeConstructor<any>][] = [
     ['a', ctypes.Int8],
     ['b', ctypes.Int16],
     ['c', ctypes.Int32]
@@ -323,10 +323,10 @@ class Example1 extends ctypes.Structure {
  */
 class Example2 extends ctypes.Structure {
   static typename = 'Example2';
-  static _fields_: [string, ctypes.ICTypeConstructor<any>][] = [
+  static fields: [string, ctypes.ICTypeConstructor<any>][] = [
     ['example1', Example1],
-    ['pointer', ctypes.Pointer<ctypes.Int16>(ctypes.Int16)],
-    ['array', ctypes.Array<ctypes.Int32>(ctypes.Int32, 5)]
+    ['pointer', ctypes.pointer<ctypes.Int16>(ctypes.Int16)],
+    ['array', ctypes.array<ctypes.Int32>(ctypes.Int32, 5)]
   ];
 }
 
@@ -473,8 +473,8 @@ describe('ctypes', function (): void {
     });
     it('TypedPointer', function(): void {
       const num = new ctypes.Uint16(m, 12345);
-      const PUint16 = ctypes.Pointer<ctypes.Uint16>(ctypes.Uint16);
-      const p = new PUint16(m, num.address);
+      const pUint16 = ctypes.pointer<ctypes.Uint16>(ctypes.Uint16);
+      const p = new pUint16(m, num.address);
       chai.expect(p.getValue()).equals(num.address);
       chai.expect(p.value).equals(num.address);
       chai.expect(p.deref() instanceof ctypes.Uint16).equals(true);
@@ -490,8 +490,8 @@ describe('ctypes', function (): void {
     });
     it('cast uint16* to void* to uint16*', function(): void {
       const num = new ctypes.Uint16(m, 12345);
-      const PUint16 = ctypes.Pointer<ctypes.Uint16>(ctypes.Uint16);
-      const p = new PUint16(m, num.address);
+      const pUint16 = ctypes.pointer<ctypes.Uint16>(ctypes.Uint16);
+      const p = new pUint16(m, num.address);
       // cast to void pointer
       const vp = p.cast<ctypes.VoidPointer>(null);
       chai.expect(vp instanceof ctypes.VoidPointer).equals(true);
@@ -515,10 +515,10 @@ describe('ctypes', function (): void {
   });
   describe('CArray', function(): void {
     it('create from JS array', function(): void {
-      const Uint16_5 = ctypes.Array<ctypes.Uint16>(ctypes.Uint16, 5);
+      const UINT16_A5 = ctypes.array<ctypes.Uint16>(ctypes.Uint16, 5);
       const data = [1, 2, 3, 4, 65535, 66, 77]; // actually 7 items
-      const ar = new Uint16_5(m, data);
-      chai.expect(ar instanceof Uint16_5).equals(true);
+      const ar = new UINT16_A5(m, data);
+      chai.expect(ar instanceof UINT16_A5).equals(true);
       chai.expect(ar.length).equals(5);
       chai.expect(ar.value).eql(data.slice(0, -2));
       for (let i = 0; i < ar.length; ++i) chai.expect(ar.get(i)).equals(data[i]);
@@ -527,13 +527,13 @@ describe('ctypes', function (): void {
       m.free(ar.address);
     });
     it('create from CArray', function(): void {
-      const Uint16_5 = ctypes.Array<ctypes.Uint16>(ctypes.Uint16, 5);
+      const UINT16_A5 = ctypes.array<ctypes.Uint16>(ctypes.Uint16, 5);
       const data = [1, 2, 3, 4, 65535, 66, 77];
-      const ar = new Uint16_5(m, data);
-      const Uint16_3 = ctypes.Array<ctypes.Uint16>(ctypes.Uint16, 3);
-      const ar2 = new Uint16_3(m, ar);
-      chai.expect(ar2 instanceof Uint16_3).equals(true);
-      chai.expect(ar2 instanceof Uint16_5).equals(false);
+      const ar = new UINT16_A5(m, data);
+      const UINT16_A3 = ctypes.array<ctypes.Uint16>(ctypes.Uint16, 3);
+      const ar2 = new UINT16_A3(m, ar);
+      chai.expect(ar2 instanceof UINT16_A3).equals(true);
+      chai.expect(ar2 instanceof UINT16_A5).equals(false);
       chai.expect(ar2.length).equals(3);
       chai.expect(ar2.value).eql(ar.value.slice(0, -2));
       m.free(ar.address);
@@ -559,24 +559,24 @@ describe('ctypes', function (): void {
       chai.expect(example.value).eql(data);
       chai.expect(Object.getOwnPropertyNames(example.fields)).eql(['example1', 'pointer', 'array']);
       chai.expect(example.fields.example1 instanceof Example1).equals(true);
-      chai.expect(example.fields.pointer instanceof ctypes.Pointer<ctypes.Int16>(ctypes.Int16)).equals(true);
-      chai.expect(example.fields.array instanceof ctypes.Array<ctypes.Int32>(ctypes.Int32, 5)).equals(true);
+      chai.expect(example.fields.pointer instanceof ctypes.pointer<ctypes.Int16>(ctypes.Int16)).equals(true);
+      chai.expect(example.fields.array instanceof ctypes.array<ctypes.Int32>(ctypes.Int32, 5)).equals(true);
       chai.expect(() => { (example.fields.pointer as ctypes.IPointer<ctypes.Int32>).deref(); }).throw(Error, 'trying to deref NULL pointer');
       example.fields.pointer.value = (example.fields.example1 as Example1).fields.c.address;
       chai.expect((example.fields.pointer as ctypes.IPointer<ctypes.Int32>).deref().value).equals(3);
       m.free(example.address);
     });
     it('Example2 array and pointer', function(): void {
-      const Example2_3 = ctypes.Array<Example2>(Example2, 3);
+      const EXAMPLE2_A3 = ctypes.array<Example2>(Example2, 3);
       const data = [
         {example1: {a: 1, b: 2, c: 3}, pointer: 0, array: [1, 2, 3, 4, 5]},
         {example1: {a: 4, b: 5, c: 6}, pointer: 255, array: [6, 7, 8, 9, 10]},
         {example1: {a: 1, b: 2, c: 3}, pointer: 123456789, array: [11, 12, 13, 14, 15]}
       ];
-      const ar = new Example2_3(m, data);
+      const ar = new EXAMPLE2_A3(m, data);
       chai.expect(ar.value).eql(data);
-      const P_Example2 = ctypes.Pointer<Example2>(Example2);
-      const p = new P_Example2(m, ar.address);
+      const pExample2 = ctypes.pointer<Example2>(Example2);
+      const p = new pExample2(m, ar.address);
       chai.expect(p.deref().value).eql(data[0]);
       p.inc();
       chai.expect(p.deref().value).eql(data[1]);

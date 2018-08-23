@@ -514,7 +514,7 @@ export namespace ctypes {
     size: number;
   }
   export interface IStructureConstructor<T extends CType> extends ICTypeConstructor<T> {
-    _fields_: [string, ICTypeConstructor<any>][];
+    fields: [string, ICTypeConstructor<any>][];
     alignments: { [index: string]: number[] } | null;
   }
 
@@ -721,7 +721,7 @@ export namespace ctypes {
     }
     cast<T extends CType>(type: ICTypeConstructor<T>): IPointer<T> {
       if (type === null) return new VoidPointer(this.memory, this.value, this.address);
-      return new (Pointer<T>(type))(this.memory, this.value, this.address);
+      return new (pointer<T>(type))(this.memory, this.value, this.address);
     }
     inc(): never {
       throw new Error('arithmetic on void pointer');
@@ -738,7 +738,7 @@ export namespace ctypes {
   const registeredPointerTypes: { [type: string]: IPointerConstructor<any> } = {};
 
   // Pointer type factory function.
-  export function Pointer<T extends CType>(type: ICTypeConstructor<T> | null): IVoidPointerConstructor | IPointerConstructor<T> {
+  export function pointer<T extends CType>(type: ICTypeConstructor<T> | null): IVoidPointerConstructor | IPointerConstructor<T> {
     if (!type === null) return VoidPointer;
     if (registeredPointerTypes[type.typename]) return registeredPointerTypes[type.typename];
 
@@ -753,7 +753,7 @@ export namespace ctypes {
       }
       cast<U extends CType>(type: ICTypeConstructor<U> | null): IPointer<U> {
         if (type === null) return new VoidPointer(this.memory, this.value, this.address);
-        return new (Pointer<U>(type))(this.memory, this.value, this.address);
+        return new (pointer<U>(type))(this.memory, this.value, this.address);
       }
       inc(): void {
         this.value += type.bytes;
@@ -780,7 +780,7 @@ export namespace ctypes {
   // we need this array base class to get something in the prototype chain
   // to test against with `instanceof` to find CArray types
   abstract class CArrayBase extends CType implements ICArray {
-    abstract readonly length: number = 0;
+    abstract length: number = 0;
     abstract getValue(): any[];
     abstract setValue(value: any): void;
     abstract get(index: number): any;
@@ -792,7 +792,7 @@ export namespace ctypes {
   const registeredArrayTypes: { [type: string]: ICArrayConstructor<any> } = {};
 
   // Array type factory function.
-  export function Array<T extends ICType>(type: ICTypeConstructor<T>, length: number) {
+  export function array<T extends CType>(type: ICTypeConstructor<T>, length: number): ICArrayConstructor<T> {
     const typename = `${type.typename}[${length}]`;
     if (registeredArrayTypes[typename]) return registeredArrayTypes[typename];
 
@@ -802,7 +802,7 @@ export namespace ctypes {
       static bytes = type.bytes * length;
       static accessType = type.accessType;
       static size = length;
-      readonly length: number;
+      length: number;
       constructor(memory: Memory, value?: any, address?: Address) {
         super(memory, null, address);
         this.length = length;
@@ -854,7 +854,7 @@ export namespace ctypes {
           }
         }
         // get values by index access
-        if (value instanceof Array || value.length !== undefined) {
+        if (value instanceof array || value.length !== undefined) {
           const obj = new type(this.memory, null, this.address);
           let p = this.address;
           for (let i = 0; i < end; ++i, p += type.bytes) {
@@ -903,14 +903,14 @@ export namespace ctypes {
   /**
    * Structure base class.
    * Base class to create C like struct types. Simply subclass it and define
-   * the struct members in the `_fields_` property. The `typename` is needed for
+   * the struct members in the `fields` property. The `typename` is needed for
    * pointers or arrays of the struct and must be unique across all ctypes.
    * After instantiation the struct members are exposed under `fields`.
    *
    * Example usage:
    *   class Foo extends Structure {
    *     static typename = 'Foo';
-   *     static _fields_: [string, ICTypeConstructor<any>][] = [
+   *     static fields: [string, ICTypeConstructor<any>][] = [
    *       ['a', Uint8],
    *       ['b', Float]
    *     ];
@@ -935,32 +935,32 @@ export namespace ctypes {
    */
   export abstract class Structure extends CType implements IStructure {
     fields: { [index: string]: ICType };
-    static _fields_: [string, ICTypeConstructor<any>][] = [];
+    static fields: [string, ICTypeConstructor<any>][] = [];
     private static _accessors: AccessType = 0;
     private static _aligments: { [index: string]: number[] } | null = null;
     private static _bytes: number;
     static get accessType(): any {
       if (this._accessors) return this._accessors;
-      for (let i = 0; i < this._fields_.length; ++i) this._accessors |= this._fields_[i][1].accessType;
+      for (let i = 0; i < this.fields.length; ++i) this._accessors |= this.fields[i][1].accessType;
       return this._accessors;
     }
     static get alignments(): { [index: string]: number[] } {
       if (this._aligments) this._aligments;
       this._aligments = {};
       let p = 0;
-      for (let i = 0; i < this._fields_.length; ++i) {
-        const byteSize = this._fields_[i][1].bytes;
-        const acc = this._fields_[i][1].accessType;
+      for (let i = 0; i < this.fields.length; ++i) {
+        const byteSize = this.fields[i][1].bytes;
+        const acc = this.fields[i][1].accessType;
         if (acc & AccessBits.BIT32 && p & 3) p = ((p >> 2) + 1) << 2; // TODO: use align function
         else if (acc & AccessBits.BIT16 && p & 1) p++;
-        this._aligments[this._fields_[i][0]] = [p, byteSize];
+        this._aligments[this.fields[i][0]] = [p, byteSize];
         p += byteSize;
       }
       return this._aligments;
     }
     static get bytes(): number {
       if (this._bytes) this._bytes;
-      const lastMemberAlign = this.alignments[this._fields_[this._fields_.length - 1][0]];
+      const lastMemberAlign = this.alignments[this.fields[this.fields.length - 1][0]];
       this._bytes = lastMemberAlign[0] + lastMemberAlign[1];
       if (this.accessType & AccessBits.BIT32 && this._bytes & 3) this._bytes = ((this._bytes >> 2) + 1) << 2;
       else if (this.accessType & AccessBits.BIT16 && this._bytes & 1) this._bytes++;
@@ -968,7 +968,7 @@ export namespace ctypes {
     }
     constructor(memory: IMemory, value?: any, address?: Address) {
       super(memory, null, address);
-      const fields = (this.constructor as IStructureConstructor<any>)._fields_;
+      const fields = (this.constructor as IStructureConstructor<any>).fields;
       const alignments = (this.constructor as IStructureConstructor<any>).alignments;
       this.fields = {};
       for (let i = 0; i < fields.length; ++i) {
@@ -1006,7 +1006,7 @@ export namespace ctypes {
     setAddress(address: Address): void {
       super.setAddress(address);
       if (!this.fields) return;
-      const fields = (this.constructor as IStructureConstructor<any>)._fields_;
+      const fields = (this.constructor as IStructureConstructor<any>).fields;
       const alignments = (this.constructor as IStructureConstructor<any>).alignments;
       for (let i = 0; i < fields.length; ++i) this.fields[fields[i][0]].setAddress(this.address + alignments[fields[i][0]][0]);
     }
