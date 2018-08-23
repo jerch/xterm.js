@@ -12,13 +12,13 @@ import { PoolMemory, Address, ctypes, IMemory } from './Memory';
  */
 export class CNode extends ctypes.Structure {
   static typename = 'CNode';
-  static _fields_: [string, ctypes.ICTypeConstructor<any>][] = [
+  static fields: [string, ctypes.ICTypeConstructor<any>][] = [
     /** node color red/black */
     ['color', ctypes.Uint32],
     /** node left child */
-    ['left', ctypes.Pointer<CNode>(CNode)],
+    ['left', ctypes.pointer<CNode>(CNode)],
     /** node right child */
-    ['right', ctypes.Pointer<CNode>(CNode)],
+    ['right', ctypes.pointer<CNode>(CNode)],
     /** data entries */
     ['flags', ctypes.Uint32],
     ['fg', ctypes.Uint32],
@@ -419,7 +419,7 @@ export interface IColorRGB {
  * For color mode 'P16' and 'P256' the colors are saved along with the single bit
  * attributes in `flags` as 8 bit values. For 'RGB' the 32 bit integer properties
  * `fg` and `bg` are used. To get or set their color channels separately, use the
- * convenient methods `toRGB` and `fromRGB` to convert the 32 bit numbers.
+ * convenient static methods `toRGB` and `fromRGB` to convert the 32 bit numbers.
  * Alternatively alter the numbers directly, their byte layout is:
  *    [ unused | red | green | blue ]
  */
@@ -591,7 +591,7 @@ export class AttributeStorage {
     }
   }
   /**
-   * Load attribute from address.
+   * Load attributes from address.
    * By providing `ref` unnecessary JS object creation and GC can be avoided.
    * Returns the new object or the altered `ref`.
    * @param address
