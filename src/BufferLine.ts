@@ -324,6 +324,12 @@ export class BufferLine implements IBufferLine {
     M[AccessType.UINT32][this._data + index * Cell.SIZE + Cell.WIDTH] = value[2];
   }
 
+  public fastSet(index: number, attr: number, content: number, width: number): void {
+    M[AccessType.UINT32][this._data + index * Cell.SIZE + Cell.FLAGS] = attr;
+    M[AccessType.UINT32][this._data + index * Cell.SIZE + Cell.STRING] = content;
+    M[AccessType.UINT32][this._data + index * Cell.SIZE + Cell.WIDTH] = width;
+  }
+
   public insertCells(pos: number, n: number, fillCharData: CharData): void {
     pos %= this.length;
     if (n < this.length - pos) {

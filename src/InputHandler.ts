@@ -36,8 +36,8 @@ class RequestTerminfo implements IDcsHandler {
   hook(collect: string, params: number[], flag: number): void {
     this._data = '';
   }
-  put(data: string, start: number, end: number): void {
-    this._data += data.substring(start, end);
+  put(data: Uint16Array, start: number, end: number): void {
+    // this._data += data.substring(start, end);
   }
   unhook(): void {
     // invalid: DCS 0 + r Pt ST
@@ -61,8 +61,8 @@ class DECRQSS implements IDcsHandler {
     this._data = '';
   }
 
-  put(data: string, start: number, end: number): void {
-    this._data += data.substring(start, end);
+  put(data: Uint16Array, start: number, end: number): void {
+    // this._data += data.substring(start, end);
   }
 
   unhook(): void {
@@ -115,6 +115,7 @@ class DECRQSS implements IDcsHandler {
  */
 export class InputHandler extends Disposable implements IInputHandler {
   private _surrogateHigh: string;
+  private _buffer: Uint16Array;
 
   constructor(
       protected _terminal: IInputHandlingTerminal,
@@ -125,6 +126,7 @@ export class InputHandler extends Disposable implements IInputHandler {
     this.register(this._parser);
 
     this._surrogateHigh = '';
+    this._buffer = new Uint16Array(10000);
 
     /**
      * custom fallback handlers
@@ -317,7 +319,13 @@ export class InputHandler extends Disposable implements IInputHandler {
       this._surrogateHigh = '';
     }
 
-    this._parser.parse(data);
+    if (this._buffer.length < data.length) {
+      this._buffer = new Uint16Array(data.length);
+    }
+    for (let i = 0; i < data.length; ++i) {
+      this._buffer[i] = data.charCodeAt(i);
+    }
+    this._parser.parse(this._buffer, data.length);
 
     buffer = this._terminal.buffer;
     if (buffer.x !== cursorStartX || buffer.y !== cursorStartY) {
@@ -325,8 +333,8 @@ export class InputHandler extends Disposable implements IInputHandler {
     }
   }
 
-  public print(data: string, start: number, end: number): void {
-    let char: string;
+  public print(data: Uint16Array, start: number, end: number): void {
+    // let char: string;
     let code: number;
     let low: number;
     let chWidth: number;
@@ -341,21 +349,22 @@ export class InputHandler extends Disposable implements IInputHandler {
 
     this._terminal.updateRange(buffer.y);
     for (let stringPosition = start; stringPosition < end; ++stringPosition) {
-      char = data.charAt(stringPosition);
-      code = data.charCodeAt(stringPosition);
+      // char = data.charAt(stringPosition);
+      // code = data.charCodeAt(stringPosition);
+      code = data[stringPosition];
 
       // surrogate pair handling
       if (0xD800 <= code && code <= 0xDBFF) {
         // we got a surrogate high
         // get surrogate low (next 2 bytes)
-        low = data.charCodeAt(stringPosition + 1);
+        low = data[stringPosition + 1];
         if (isNaN(low)) {
           // end of data stream, save surrogate high
-          this._surrogateHigh = char;
+          this._surrogateHigh = String.fromCharCode(code);
           continue;
         }
         code = ((code - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000;
-        char += data.charAt(stringPosition + 1);
+        // char += data.charAt(stringPosition + 1);
       }
       // surrogate low - already handled above
       if (0xDC00 <= code && code <= 0xDFFF) {
@@ -368,12 +377,14 @@ export class InputHandler extends Disposable implements IInputHandler {
 
       // get charset replacement character
       if (charset) {
-        char = charset[char] || char;
-        code = char.charCodeAt(0);
+        const c = charset[String.fromCharCode(code)];
+        if (c) {
+          code = c.charCodeAt(0);
+        }
       }
 
       if (screenReaderMode) {
-        this._terminal.emit('a11y.char', char);
+        this._terminal.emit('a11y.char', String.fromCharCode(code));
       }
 
       // insert combining char at last cursor position
@@ -390,12 +401,12 @@ export class InputHandler extends Disposable implements IInputHandler {
             // since an empty cell is only set by fullwidth chars
             const chMinusTwo = bufferRow.get(buffer.x - 2);
             if (chMinusTwo) {
-              chMinusTwo[CHAR_DATA_CHAR_INDEX] += char;
+              chMinusTwo[CHAR_DATA_CHAR_INDEX] += String.fromCharCode(code);
               chMinusTwo[CHAR_DATA_CODE_INDEX] = code;
               bufferRow.set(buffer.x - 2, chMinusTwo); // must be set explicitly now
             }
           } else {
-            chMinusOne[CHAR_DATA_CHAR_INDEX] += char;
+            chMinusOne[CHAR_DATA_CHAR_INDEX] += String.fromCharCode(code);
             chMinusOne[CHAR_DATA_CODE_INDEX] = code;
             bufferRow.set(buffer.x - 1, chMinusOne); // must be set explicitly now
           }
@@ -448,7 +459,8 @@ export class InputHandler extends Disposable implements IInputHandler {
       }
 
       // write current char to buffer and advance cursor
-      bufferRow.set(buffer.x++, [curAttr, char, chWidth, code]);
+      // bufferRow.set(buffer.x++, [curAttr, char, chWidth, code]);
+      bufferRow.fastSet(buffer.x++, curAttr, code, chWidth);
 
       // fullwidth char - also set next cell to placeholder stub and advance cursor
       // for graphemes bigger than fullwidth we can simply loop to zero

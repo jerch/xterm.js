@@ -111,7 +111,7 @@ export interface ICompositionHelper {
  */
 export interface IInputHandler {
   parse(data: string): void;
-  print(data: string, start: number, end: number): void;
+  print(data: Uint16Array, start: number, end: number): void;
 
   /** C0 BEL */ bell(): void;
   /** C0 LF */ lineFeed(): void;
@@ -462,7 +462,7 @@ export interface IParsingState {
 */
 export interface IDcsHandler {
   hook(collect: string, params: number[], flag: number): void;
-  put(data: string, start: number, end: number): void;
+  put(data: Uint16Array, start: number, end: number): void;
   unhook(): void;
 }
 
@@ -479,9 +479,9 @@ export interface IEscapeSequenceParser extends IDisposable {
    * Parse string `data`.
    * @param data The data to parse.
    */
-  parse(data: string): void;
+  parse(data: Uint16Array, length: number): void;
 
-  setPrintHandler(callback: (data: string, start: number, end: number) => void): void;
+  setPrintHandler(callback: (data: Uint16Array, start: number, end: number) => void): void;
   clearPrintHandler(): void;
 
   setExecuteHandler(flag: string, callback: () => void): void;
@@ -520,4 +520,5 @@ export interface IBufferLine {
   deleteCells(pos: number, n: number, fill: CharData): void;
   replaceCells(start: number, end: number, fill: CharData): void;
   resize(cols: number, fill: CharData, shrink?: boolean): void;
+  fastSet(index: number, attr: number, content: number, width: number): void;
 }
