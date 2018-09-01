@@ -114,10 +114,11 @@ export const enum Cell {
  *    - provide getData/setData to directly access the data
  *    - clear/reset method
  */
-export class BufferLineN implements IBufferLine {
+
+export class BufferLine implements IBufferLine {
   static blankLine(cols: number, attr: number, isWrapped?: boolean): IBufferLine {
     const ch: CharData = [attr, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE];
-    return new BufferLineN(cols, ch, isWrapped);
+    return new BufferLine(cols, ch, isWrapped);
   }
   protected _data: Uint32Array | null = null;
   protected _combined: {[index: number]: string} = {};
@@ -134,8 +135,8 @@ export class BufferLineN implements IBufferLine {
     this.length = cols || 0;
   }
 
-  public clone(): BufferLineN {
-    const newLine = new BufferLineN(0);
+  public clone(): BufferLine {
+    const newLine = new BufferLine(0);
     newLine._data = new Uint32Array(this._data);  // thats actually pretty slow :(
     newLine.length = this.length;
     // FIXME: copy _combined data as well
@@ -149,7 +150,7 @@ export class BufferLineN implements IBufferLine {
     }
   }
 
-  public fastClear(line: BufferLineN): void {
+  public fastClear(line: BufferLine): void {
     if (this.length !== line.length) {
       this._data = new Uint32Array(line._data);
     } else {
@@ -180,6 +181,12 @@ export class BufferLineN implements IBufferLine {
       this._data[index * Cell.SIZE + Cell.STRING] = value[1].charCodeAt(0);
     }
     this._data[index * Cell.SIZE + Cell.WIDTH] = value[2];
+  }
+
+  public fastSet(index: number, attr: number, content: number, width: number): void {
+    this._data[index * Cell.SIZE + Cell.FLAGS] = attr;
+    this._data[index * Cell.SIZE + Cell.STRING] = content;
+    this._data[index * Cell.SIZE + Cell.WIDTH] = width;
   }
 
   public insertCells(pos: number, n: number, fillCharData: CharData): void {
@@ -247,7 +254,7 @@ export class BufferLineN implements IBufferLine {
 }
 
 
-
+/*
 export const M = new SeglistMemory(1300000);
 M.registerAccess(AccessType.UINT32);
 
@@ -395,3 +402,4 @@ export class BufferLine implements IBufferLine {
     this.length = cols;
   }
 }
+*/

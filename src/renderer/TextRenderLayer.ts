@@ -82,10 +82,18 @@ export class TextRenderLayer extends BaseRenderLayer {
         // let chars: string = charData[CHAR_DATA_CHAR_INDEX];
         // const attr: number = charData[CHAR_DATA_ATTR_INDEX];
         // let width: number = charData[CHAR_DATA_WIDTH_INDEX];
+        /*
         let p = (line as any)._data;
         const attr = M[AccessType.UINT32][p++ + x * Cell.SIZE];
         let code = M[AccessType.UINT32][p++ + x * Cell.SIZE];
         let width = M[AccessType.UINT32][p + x * Cell.SIZE];
+        let chars = String.fromCharCode(code);
+        */
+       
+        let m = (line as any)._data;
+        const attr = m[x * Cell.SIZE + Cell.FLAGS];
+        let code = m[x * Cell.SIZE + Cell.STRING];
+        let width = m[x * Cell.SIZE + Cell.WIDTH];
         let chars = String.fromCharCode(code);
 
         // If true, indicates that the current character(s) to draw were joined.

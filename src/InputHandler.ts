@@ -463,11 +463,19 @@ export class InputHandler extends Disposable implements IInputHandler {
       // bufferRow.set(buffer.x++, [curAttr, char, chWidth, code]);
       // bufferRow.fastSet(buffer.x++, curAttr, code, chWidth);
       
+      /*
       const index = buffer.x++;
       let p = (bufferRow as any)._data;
       M[AccessType.UINT32][p++ + index * Cell.SIZE] = curAttr;
       M[AccessType.UINT32][p++ + index * Cell.SIZE] = code;
       M[AccessType.UINT32][p + index * Cell.SIZE] = chWidth;
+      */
+     
+      const x = buffer.x++;
+      const m = (bufferRow as any)._data;
+      m[x * Cell.SIZE + Cell.FLAGS] = curAttr;
+      m[x * Cell.SIZE + Cell.STRING] = code;
+      m[x * Cell.SIZE + Cell.WIDTH] = chWidth;
 
       // fullwidth char - also set next cell to placeholder stub and advance cursor
       // for graphemes bigger than fullwidth we can simply loop to zero
