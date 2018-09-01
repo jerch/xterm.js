@@ -1171,7 +1171,21 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
    * @param isWrapped Whether the new line is wrapped from the previous line.
    */
   public scroll(isWrapped?: boolean): void {
-    const newLine = BufferLine.blankLine(this.cols, DEFAULT_ATTR, isWrapped);
+    
+    if (!this.bf || this.bf.length !== this.cols) {
+      this.bf = BufferLine.blankLine(this.cols, DEFAULT_ATTR, isWrapped);
+    }
+    let newLine: BufferLine = null;
+    if (window.pool && (newLine = window.pool.pop())) {
+      newLine.fastClear(this.bf);
+    } else {
+      newLine = this.bf.clone();
+    }
+    
+    // newLine = this.bf.clone();
+
+
+    // const newLine = BufferLine.blankLine(this.cols, DEFAULT_ATTR, isWrapped);
     const topRow = this.buffer.ybase + this.buffer.scrollTop;
     const bottomRow = this.buffer.ybase + this.buffer.scrollBottom;
 

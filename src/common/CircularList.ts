@@ -88,6 +88,8 @@ export class CircularList<T> extends EventEmitter implements ICircularList<T> {
    * @param value The value to push onto the list.
    */
   public push(value: T): void {
+    if (!window.pool) window.pool = [];
+    if (this._array[this._getCyclicIndex(this._length)]) window.pool.push(this._array[this._getCyclicIndex(this._length)]);
     this._array[this._getCyclicIndex(this._length)] = value;
     if (this._length === this._maxLength) {
       this._startIndex++;
