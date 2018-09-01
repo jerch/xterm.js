@@ -94,7 +94,7 @@ export class BufferLineOld implements IBufferLine {
   }
 }
 
-const enum Cell {
+export const enum Cell {
   FLAGS = 0,
   STRING = 1,
   WIDTH = 2,
@@ -248,7 +248,7 @@ export class BufferLineN implements IBufferLine {
 
 
 
-const M = new SeglistMemory(1300000);
+export const M = new SeglistMemory(1300000);
 M.registerAccess(AccessType.UINT32);
 
 

@@ -13,7 +13,8 @@ import { wcwidth } from './CharWidth';
 import { EscapeSequenceParser } from './EscapeSequenceParser';
 import { ICharset } from './core/Types';
 import { Disposable } from './common/Lifecycle';
-import { BufferLine } from './BufferLine';
+import { BufferLine, M, Cell } from './BufferLine';
+import { AccessType } from './Memory';
 
 /**
  * Map collect to glevel. Used in `selectCharset`.
@@ -460,7 +461,13 @@ export class InputHandler extends Disposable implements IInputHandler {
 
       // write current char to buffer and advance cursor
       // bufferRow.set(buffer.x++, [curAttr, char, chWidth, code]);
-      bufferRow.fastSet(buffer.x++, curAttr, code, chWidth);
+      // bufferRow.fastSet(buffer.x++, curAttr, code, chWidth);
+      
+      const index = buffer.x++;
+      let p = (bufferRow as any)._data;
+      M[AccessType.UINT32][p++ + index * Cell.SIZE] = curAttr;
+      M[AccessType.UINT32][p++ + index * Cell.SIZE] = code;
+      M[AccessType.UINT32][p + index * Cell.SIZE] = chWidth;
 
       // fullwidth char - also set next cell to placeholder stub and advance cursor
       // for graphemes bigger than fullwidth we can simply loop to zero

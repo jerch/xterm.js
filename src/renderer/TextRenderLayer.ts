@@ -9,6 +9,8 @@ import { CharData, ITerminal } from '../Types';
 import { INVERTED_DEFAULT_COLOR } from './atlas/Types';
 import { GridCache } from './GridCache';
 import { BaseRenderLayer } from './BaseRenderLayer';
+import { M, Cell } from '../BufferLine';
+import { AccessType } from '../Memory';
 
 /**
  * This CharData looks like a null character, which will forc a clear and render
@@ -71,14 +73,20 @@ export class TextRenderLayer extends BaseRenderLayer {
       const line = terminal.buffer.lines.get(row);
       const joinedRanges = joinerRegistry ? joinerRegistry.getJoinedCharacters(row) : [];
       for (let x = 0; x < terminal.cols; x++) {
-        const charData = line.get(x);
-        let code: number = <number>charData[CHAR_DATA_CODE_INDEX];
+        // const charData = line.get(x);
+        // let code: number = <number>charData[CHAR_DATA_CODE_INDEX];
 
         // Can either represent character(s) for a single cell or multiple cells
         // if indicated by a character joiner.
-        let chars: string = charData[CHAR_DATA_CHAR_INDEX];
-        const attr: number = charData[CHAR_DATA_ATTR_INDEX];
-        let width: number = charData[CHAR_DATA_WIDTH_INDEX];
+        
+        // let chars: string = charData[CHAR_DATA_CHAR_INDEX];
+        // const attr: number = charData[CHAR_DATA_ATTR_INDEX];
+        // let width: number = charData[CHAR_DATA_WIDTH_INDEX];
+        let p = (line as any)._data;
+        const attr = M[AccessType.UINT32][p++ + x * Cell.SIZE];
+        let code = M[AccessType.UINT32][p++ + x * Cell.SIZE];
+        let width = M[AccessType.UINT32][p + x * Cell.SIZE];
+        let chars = String.fromCharCode(code);
 
         // If true, indicates that the current character(s) to draw were joined.
         let isJoined = false;
@@ -116,7 +124,7 @@ export class TextRenderLayer extends BaseRenderLayer {
         // right is a space, take ownership of the cell to the right. We skip
         // this check for joined characters because their rendering likely won't
         // yield the same result as rendering the last character individually.
-        if (!isJoined && this._isOverlapping(charData)) {
+        if (!isJoined && this._isOverlapping(attr, chars, width, code)) {
           // If the character is overlapping, we want to force a re-render on every
           // frame. This is specifically to work around the case where two
           // overlaping chars `a` and `b` are adjacent, the cursor is moved to b and a
@@ -270,21 +278,19 @@ export class TextRenderLayer extends BaseRenderLayer {
   /**
    * Whether a character is overlapping to the next cell.
    */
-  private _isOverlapping(charData: CharData): boolean {
+  private _isOverlapping(attr: number, char: string, width: number, code: number): boolean {
     // Only single cell characters can be overlapping, rendering issues can
     // occur without this check
-    if (charData[CHAR_DATA_WIDTH_INDEX] !== 1) {
+    if (width !== 1) {
       return false;
     }
 
     // We assume that any ascii character will not overlap
-    const code = charData[CHAR_DATA_CODE_INDEX];
     if (code < 256) {
       return false;
     }
 
     // Deliver from cache if available
-    const char = charData[CHAR_DATA_CHAR_INDEX];
     if (this._characterOverlapCache.hasOwnProperty(char)) {
       return this._characterOverlapCache[char];
     }
