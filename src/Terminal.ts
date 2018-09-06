@@ -1307,12 +1307,12 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
    * @param data The text to write to the terminal.
    */
   public write(data: string): void {
-    this._refreshStart = this.buffer.y;
-    this._refreshEnd = this.buffer.y;
-    this._inputHandler.parse(data);
-    this.updateRange(this.buffer.y);
-    this.refresh(this._refreshStart, this._refreshEnd);
-    return;
+    //this._refreshStart = this.buffer.y;
+    //this._refreshEnd = this.buffer.y;
+    //this._inputHandler.parse(data);
+    //this.updateRange(this.buffer.y);
+    //this.refresh(this._refreshStart, this._refreshEnd);
+    //return;
 
 
 
