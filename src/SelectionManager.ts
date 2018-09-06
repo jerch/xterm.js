@@ -248,9 +248,9 @@ export class SelectionManager extends EventEmitter implements ISelectionManager 
    */
   public refresh(isNewSelection?: boolean): void {
     // Queue the refresh for the renderer
-    if (!this._refreshAnimationFrame) {
-      this._refreshAnimationFrame = window.requestAnimationFrame(() => this._refresh());
-    }
+    // if (!this._refreshAnimationFrame) {
+    //   this._refreshAnimationFrame = window.requestAnimationFrame(() => this._refresh());
+    // }
 
     // If the platform is Linux and the refresh call comes from a mouse event,
     // we need to update the selection for middle click to paste selection.

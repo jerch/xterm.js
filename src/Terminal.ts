@@ -724,10 +724,10 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
       this.textarea.focus();
       this.textarea.select();
     }));
-    this.register(this.addDisposableListener('scroll', () => {
-      this.viewport.syncScrollArea();
-      this.selectionManager.refresh();
-    }));
+    // this.register(this.addDisposableListener('scroll', () => {
+      // this.viewport.syncScrollArea();
+      // this.selectionManager.refresh();
+    // }));
     this.register(addDisposableDomListener(this._viewportElement, 'scroll', () => this.selectionManager.refresh()));
 
     this.mouseHelper = new MouseHelper(this.renderer);
@@ -1307,6 +1307,17 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
    * @param data The text to write to the terminal.
    */
   public write(data: string): void {
+    this._refreshStart = this.buffer.y;
+    this._refreshEnd = this.buffer.y;
+    this._inputHandler.parse(data);
+    this.updateRange(this.buffer.y);
+    this.refresh(this._refreshStart, this._refreshEnd);
+    return;
+
+
+
+
+
     // Ensure the terminal isn't disposed
     if (this._isDisposed) {
       return;

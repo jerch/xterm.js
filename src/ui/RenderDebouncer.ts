@@ -37,7 +37,12 @@ export class RenderDebouncer implements IDisposable {
       return;
     }
 
-    this._animationFrame = window.requestAnimationFrame(() => this._innerRefresh());
+    this._animationFrame = window.requestAnimationFrame(() => {
+      this._terminal.viewport.syncScrollArea();
+      this._terminal.selectionManager.refresh();
+      this._innerRefresh();
+      // this._terminal.viewport.syncScrollArea();
+    });
   }
 
   private _innerRefresh(): void {
