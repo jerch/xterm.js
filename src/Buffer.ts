@@ -8,6 +8,7 @@ import { CharData, ITerminal, IBuffer, IBufferLine } from './Types';
 import { EventEmitter } from './common/EventEmitter';
 import { IMarker } from 'xterm';
 import { BufferLine } from './BufferLine';
+import { wcwidth } from './CharWidth';
 
 export const DEFAULT_ATTR = (0 << 18) | (257 << 9) | (256 << 0);
 export const CHAR_DATA_ATTR_INDEX = 0;
@@ -110,6 +111,8 @@ export class Buffer implements IBuffer {
    * @param newRows The new number of rows.
    */
   public resize(newCols: number, newRows: number): void {
+    return this._reflow_resize(newCols, newRows);
+    
     // Increase max length if needed before adjustments to allow space to fill
     // as required.
     const newMaxLength = this._getCorrectBufferLength(newRows);
@@ -192,6 +195,108 @@ export class Buffer implements IBuffer {
     }
 
     this.scrollBottom = newRows - 1;
+  }
+
+  private _reflow_resize(newCols: number, newRows: number): void {
+    if (!this.lines.length) {
+      return;
+    }
+    if (newCols === this._terminal.cols && newRows === this._terminal.rows) {
+      return;
+    }
+
+    // get unwrapped line ranges with cell lengths
+    let unwrapped = [];
+    const it = new BufferStringIterator(this, true);
+    while (it.hasNext()) {
+      const lineData = it.next(true) as [{first: number, last: number}, string];
+      unwrapped.push({range: lineData[0], width: stringWidth(lineData[1])});
+    }
+    // trim empty lines from the end
+    let unwrappedEnd = unwrapped.length - 1;
+    while (!unwrapped[unwrappedEnd].width && unwrappedEnd) {
+      unwrappedEnd--;
+    }
+
+    // create new buffer line list
+    const maxLength = this._getCorrectBufferLength(newRows);
+    const lines = new CircularList<IBufferLine>(maxLength);
+
+    // find start line
+    let start = 0;
+    let widthCount = 0;
+    for (let i = unwrappedEnd; i >= 0; --i) {
+      widthCount += Math.ceil(unwrapped[i].width / newCols) || 1;
+      if (widthCount >= maxLength) {
+        start = i;
+        break;
+      }
+    }
+
+    // iterate over all unwrapped lines
+    let pos = 0;
+    for (let i = start; i <= unwrappedEnd; ++i) {
+      pos = 0;
+      let newLine = BufferLine.blankLine(newCols, DEFAULT_ATTR, false); // first line is never wrapped
+      chunk: for (let ol = unwrapped[i].range.first; ol < unwrapped[i].range.last; ++ol) {
+        const oldLine = this.lines.get(ol);
+        let oldPos = 0;
+        while (oldPos < oldLine.length) {
+          while (pos < newLine.length) {
+            newLine.set(pos++, oldLine.get(oldPos++));
+            if (oldPos >= oldLine.length) {
+              continue chunk;
+            }
+          }
+          lines.push(newLine);
+          newLine = BufferLine.blankLine(newCols, DEFAULT_ATTR, true);
+          pos = 0;
+        }
+      }
+      // we are at the last row of the unwrapped line
+      // copy only up to right trim width
+      const lastRowWidth = stringWidth(this.translateBufferLineToString(unwrapped[i].range.last, true));
+      const oldLine = this.lines.get(unwrapped[i].range.last);
+      let oldPos = 0;
+      oldLoop: while (oldPos < lastRowWidth) {
+        while (pos < newLine.length) {
+          newLine.set(pos++, oldLine.get(oldPos++));
+          if (oldPos >= lastRowWidth) {
+            break oldLoop;
+          }
+        }
+        lines.push(newLine);
+        newLine = BufferLine.blankLine(newCols, DEFAULT_ATTR, true);
+        pos = 0;
+      }
+      lines.push(newLine);
+    }
+
+    // fill list at least up to terminal.rows
+    while (lines.length < newRows) {
+      lines.push(BufferLine.blankLine(newCols, DEFAULT_ATTR, false));
+    }
+
+    // FIXME: cursor repositioning
+    if (lines.length < maxLength) {
+      this.ydisp += lines.length - this.lines.length - (newRows - this._terminal.rows); 
+      this.ybase += lines.length - this.lines.length - (newRows - this._terminal.rows);
+    }
+
+    const oldBufferContent = new BufferStringIterator(this, true).toArray();
+
+    // apply new list to buffer and adjust bottom
+    this.lines = lines;
+    this.scrollBottom = newRows - 1;
+
+    // assert equality
+    const newBufferContent = new BufferStringIterator(this, true).toArray();
+    console.log(oldBufferContent.length, newBufferContent.length);
+    for (let i = 0; i <oldBufferContent.length; ++i) {
+      if (oldBufferContent[i] !== newBufferContent[i]) {
+        console.log([i, oldBufferContent[i], newBufferContent[i]]);
+      }
+    }
   }
 
   /**
@@ -365,4 +470,55 @@ export class Marker extends EventEmitter implements IMarker {
     this.emit('dispose');
     super.dispose();
   }
+}
+
+
+export class BufferStringIterator {
+  private _start: number;
+  private _end: number;
+  private _current: number;
+  constructor (private _buffer: IBuffer, private _trimRight: boolean, startIndex?: number, endIndex?: number) {
+    this._start = startIndex || 0;
+    this._end = endIndex || this._buffer.lines.length;
+    this._current = this._start;
+  }
+  public hasNext(): boolean {
+    return this._current < this._end;
+  }
+  public next(withRanges: boolean = false): string | [{first: number, last: number}, string] {
+    const range = this._buffer.getWrappedRangeForLine(this._current);
+    let result = '';
+    for (let i = range.first; i <= range.last; ++i) {
+      result += this._buffer.translateBufferLineToString(i, (this._trimRight) ? i === range.last : false);
+    }
+    this._current = range.last;
+    this._current++;
+    return (withRanges) ? [range, result] : result;
+  }
+  toArray(): string[] {
+    const result: string[] = [];
+    while (this.hasNext()) {
+      result.push(this.next() as string);
+    }
+    return result;
+  }
+}
+
+export function stringWidth(s: string): number {
+  let result = 0;
+  for (let i = 0; i < s.length; ++i) {
+    let code = s.charCodeAt(i);
+    if (0xD800 <= code && code <= 0xDBFF) {
+      const low = s.charCodeAt(i + 1);
+      if (isNaN(low)) {
+        return result;
+      }
+      code = ((code - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000;
+    }
+    if (0xDC00 <= code && code <= 0xDFFF) {
+      continue;
+    }
+    result += wcwidth(code);
+  }
+  return result;
 }
