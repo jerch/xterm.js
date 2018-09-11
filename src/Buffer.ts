@@ -8,7 +8,6 @@ import { CharData, ITerminal, IBuffer, IBufferLine } from './Types';
 import { EventEmitter } from './common/EventEmitter';
 import { IMarker } from 'xterm';
 import { BufferLine } from './BufferLine';
-import { wcwidth } from './CharWidth';
 
 export const DEFAULT_ATTR = (0 << 18) | (257 << 9) | (256 << 0);
 export const CHAR_DATA_ATTR_INDEX = 0;
@@ -210,19 +209,19 @@ export class Buffer implements IBuffer {
 
     // get unwrapped line ranges with cell lengths
     let unwrapped = [];
-    let lastEntry: {range: {first: number, last: number}, width: number, wLast: number} = {range: {first: 0, last: 0}, width: this._terminal.cols, wLast: 0};
+    let lastEntry: {first: number, last: number, width: number, wLast: number} = {first: 0, last: 0, width: this._terminal.cols, wLast: 0};
     for (let i = 1; i < this.lines.length; ++i) {
       const line = this.lines.get(i);
       if (!line.isWrapped) {
-        lastEntry.wLast = trimWidth(this.lines.get(lastEntry.range.last));
+        lastEntry.wLast = trimWidth(this.lines.get(lastEntry.last));
         lastEntry.width -= this._terminal.cols - lastEntry.wLast;
         unwrapped.push(lastEntry);
-        lastEntry = {range: {first: i, last: i}, width: 0, wLast: 0};
+        lastEntry = {first: i, last: i, width: 0, wLast: 0};
       }
       lastEntry.width += this._terminal.cols;
-      lastEntry.range.last = i;
+      lastEntry.last = i;
     }
-    lastEntry.wLast = trimWidth(this.lines.get(lastEntry.range.last));
+    lastEntry.wLast = trimWidth(this.lines.get(lastEntry.last));
     lastEntry.width -= this._terminal.cols - lastEntry.wLast;
     unwrapped.push(lastEntry);
     // trim empty lines from the end to avoid appending nonsense empty lines
@@ -251,7 +250,7 @@ export class Buffer implements IBuffer {
     for (let i = start; i <= unwrappedEnd; ++i) {
       pos = 0;
       let newLine = BufferLine.blankLine(newCols, DEFAULT_ATTR, false); // first line is never wrapped
-      chunk: for (let ol = unwrapped[i].range.first; ol < unwrapped[i].range.last; ++ol) {
+      chunk: for (let ol = unwrapped[i].first; ol < unwrapped[i].last; ++ol) {
         const oldLine = this.lines.get(ol);
         let oldPos = 0;
         while (oldPos < oldLine.length) {
@@ -269,7 +268,7 @@ export class Buffer implements IBuffer {
       // we are at the last row of the unwrapped line
       // copy only up to right trim width
       const lastRowWidth = unwrapped[i].wLast;
-      const oldLine = this.lines.get(unwrapped[i].range.last);
+      const oldLine = this.lines.get(unwrapped[i].last);
       let oldPos = 0;
       oldLoop: while (oldPos < lastRowWidth) {
         while (pos < newLine.length) {
