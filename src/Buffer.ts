@@ -112,7 +112,7 @@ export class Buffer implements IBuffer {
    */
   public resize(newCols: number, newRows: number): void {
     return this._reflow_resize(newCols, newRows);
-    
+
     // Increase max length if needed before adjustments to allow space to fill
     // as required.
     const newMaxLength = this._getCorrectBufferLength(newRows);
@@ -212,7 +212,7 @@ export class Buffer implements IBuffer {
       const lineData = it.next(true) as [{first: number, last: number}, string];
       unwrapped.push({range: lineData[0], width: stringWidth(lineData[1])});
     }
-    // trim empty lines from the end
+    // trim empty lines from the end to avoid appending nonsense empty lines
     let unwrappedEnd = unwrapped.length - 1;
     while (!unwrapped[unwrappedEnd].width && unwrappedEnd) {
       unwrappedEnd--;
@@ -233,7 +233,7 @@ export class Buffer implements IBuffer {
       }
     }
 
-    // iterate over all unwrapped lines
+    // iterate over all unwrapped line ranges
     let pos = 0;
     for (let i = start; i <= unwrappedEnd; ++i) {
       pos = 0;
@@ -272,12 +272,12 @@ export class Buffer implements IBuffer {
       lines.push(newLine);
     }
 
-    // fill list at least up to terminal.rows
+    // fill at least up to newRows
     while (lines.length < newRows) {
       lines.push(BufferLine.blankLine(newCols, DEFAULT_ATTR, false));
     }
 
-    // FIXME: cursor repositioning
+    // FIXME: cursor repositioning and flaws in offsets
     if (lines.length < maxLength) {
       this.ydisp += lines.length - this.lines.length - (newRows - this._terminal.rows); 
       this.ybase += lines.length - this.lines.length - (newRows - this._terminal.rows);
