@@ -166,17 +166,27 @@ export const wcwidth = (function(opts: {nul: number, control: number}): (ucs: nu
  */
 export function getStringCellWidth(s: string): number {
   let result = 0;
-  for (let i = 0; i < s.length; ++i) {
+  const length = s.length;
+  for (let i = 0; i < length; ++i) {
     let code = s.charCodeAt(i);
+    // surrogate pair first
     if (0xD800 <= code && code <= 0xDBFF) {
-      const low = s.charCodeAt(i + 1);
-      if (isNaN(low)) {
-        return result;
+      if (++i >= length) {
+        // this should not happen with strings retrieved from
+        // Buffer.translateToString as it converts from UTF-32
+        // and therefore always should contain the second part
+        // for any other string we still have to handle it somehow:
+        // simply treat the lonely surrogate first as a single char (UCS-2 behavior)
+        return result + wcwidth(code);
       }
-      code = ((code - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000;
-    }
-    if (0xDC00 <= code && code <= 0xDFFF) {
-      continue;
+      const second = s.charCodeAt(i);
+      // convert surrogate pair to high codepoint only for valid second part (UTF-16)
+      // otherwise treat them independently (UCS-2 behavior)
+      if (0xDC00 <= second && second <= 0xDFFF) {
+        code = (code - 0xD800) * 0x400 + second - 0xDC00 + 0x10000;
+      } else {
+        result += wcwidth(second);
+      }
     }
     result += wcwidth(code);
   }
