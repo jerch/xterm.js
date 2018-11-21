@@ -98,6 +98,9 @@ export class Viewport extends Disposable implements IViewport {
    * Updates dimensions and synchronizes the scroll area if necessary.
    */
   public syncScrollArea(): void {
+    if (this._refreshAnimationFrame) {
+      return;
+    }
     // If buffer height changed
     if (this._lastRecordedBufferLength !== this._terminal.buffer.lines.length) {
       this._lastRecordedBufferLength = this._terminal.buffer.lines.length;

@@ -108,13 +108,12 @@ export class BufferLine implements IBufferLine {
 }
 
 /** typed array slots taken by one cell */
-const CELL_SIZE = 3;
+const CELL_SIZE = 2;
 
 /** cell member indices */
 const enum Cell {
   FLAGS = 0,
-  STRING = 1,
-  WIDTH = 2
+  STRING = 1
 }
 
 /**
@@ -153,12 +152,28 @@ export class BufferLineTypedArray implements IBufferLine {
       this._data[index * CELL_SIZE + Cell.FLAGS],
       (stringData & 0x80000000)
         ? this._combined[index]
-        : (stringData) ? String.fromCharCode(stringData) : '',
-      this._data[index * CELL_SIZE + Cell.WIDTH],
+        : (stringData) ? String.fromCharCode(stringData & 33554431) : '',
+      (stringData >> 25) & 3,
       (stringData & 0x80000000)
         ? this._combined[index].charCodeAt(this._combined[index].length - 1)
-        : stringData
+        : stringData & 33554431
     ];
+  }
+
+  public setData(index: number, attr: number, code: number, width: number): void {
+    this._data[index * CELL_SIZE + Cell.FLAGS] = attr;
+    this._data[index * CELL_SIZE + Cell.STRING] = code | (width << 25);
+  }
+
+  public addChar(index: number, code: number): void {
+    const cp = this._data[index * CELL_SIZE + Cell.STRING] & 33554431;
+    if (cp > 65535) {
+      this._combined[index] = String.fromCharCode((cp >> 10) + 0xD800) + String.fromCharCode((cp % 0x400) + 0xDC00);
+    } else {
+      this._combined[index] = String.fromCharCode(cp);
+    }
+    this._combined[index] += String.fromCharCode(code);
+    this._data[index * CELL_SIZE + Cell.STRING] = index | 0x80000000;
   }
 
   public set(index: number, value: CharData): void {
@@ -167,9 +182,9 @@ export class BufferLineTypedArray implements IBufferLine {
       this._combined[index] = value[1];
       this._data[index * CELL_SIZE + Cell.STRING] = index | 0x80000000;
     } else {
-      this._data[index * CELL_SIZE + Cell.STRING] = value[1].charCodeAt(0);
+      this._data[index * CELL_SIZE + Cell.STRING] = value[1].charCodeAt(0) | (value[2] << 25);
     }
-    this._data[index * CELL_SIZE + Cell.WIDTH] = value[2];
+    // this._data[index * CELL_SIZE + Cell.WIDTH] = value[2];
   }
 
   public insertCells(pos: number, n: number, fillCharData: CharData): void {
