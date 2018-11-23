@@ -128,10 +128,10 @@ export class Viewport extends Disposable implements IViewport {
     }
 
     // If row height changed
-    if (this._terminal.renderer.dimensions.scaledCellHeight / window.devicePixelRatio !== this._currentRowHeight) {
-      this._refresh();
-      return;
-    }
+    //if (this._terminal.renderer.dimensions.scaledCellHeight / window.devicePixelRatio !== this._currentRowHeight) {
+    //  this._refresh();
+    //  return;
+    //}
   }
 
   /**

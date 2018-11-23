@@ -42,13 +42,21 @@ export function attach(term: Terminal, socket: WebSocket, bidirectional: boolean
   addonTerminal.__getMessage = function(ev: MessageEvent): void {
     let str: string;
 
+    //console.log(ev.data);
+    //addonTerminal._core._inputHandler.parse(ev.data);
+    addonTerminal._core.write(ev.data);
+    return;
+
     if (typeof ev.data === 'object') {
       if (!myTextDecoder) {
         myTextDecoder = new TextDecoder();
       }
       if (ev.data instanceof ArrayBuffer) {
-        str = myTextDecoder.decode(ev.data);
-        displayData(str);
+        //str = myTextDecoder.decode(ev.data);
+        //displayData(ev.data);
+        console.log(ev.data);
+        //addonTerminal.write(ev.data);
+        addonTerminal._inputHandler.parse(ev.data);
       } else {
         const fileReader = new FileReader();
 

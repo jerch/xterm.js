@@ -29,7 +29,8 @@ app.post('/terminals', function (req, res) {
         cols: cols || 80,
         rows: rows || 24,
         cwd: process.env.PWD,
-        env: process.env
+        env: process.env,
+        encoding: null
       });
 
   console.log('Created terminal with PID: ' + term.pid);
@@ -58,15 +59,38 @@ app.ws('/terminals/:pid', function (ws, req) {
   console.log('Connected to terminal ' + term.pid);
   ws.send(logs[term.pid]);
 
+  /*
   function buffer(socket, timeout) {
-    let s = '';
+    let buffer = new Buffer(500000);
+    let pos = 0;
     let sender = null;
     return (data) => {
-      s += data;
+      //for (let i = 0; i < data.length; ++i) {
+      //  buffer[pos + i] = data[i]; 
+      //}
+      data.copy(buffer, pos);
+      pos += data.length;
       if (!sender) {
         sender = setTimeout(() => {
-          socket.send(s);
-          s = '';
+          socket.send(new Buffer.from(buffer.buffer, 0, pos));
+          pos = 0;
+          sender = null;
+        }, timeout);
+      }
+    };
+  }
+  const send = buffer(ws, 5);
+  */
+  function buffer(socket, timeout) {
+    let buffer = [];
+    let pos = 0;
+    let sender = null;
+    return (data) => {
+      buffer.push(data);
+      if (!sender) {
+        sender = setTimeout(() => {
+          socket.send(Buffer.concat(buffer));
+          buffer = [];
           sender = null;
         }, timeout);
       }
@@ -76,7 +100,8 @@ app.ws('/terminals/:pid', function (ws, req) {
 
   term.on('data', function(data) {
     try {
-      send(data);
+      send(data, {binary: true});
+      //ws.send(data, {binary: true});
     } catch (ex) {
       // The WebSocket is not open, ignore
     }

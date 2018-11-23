@@ -147,7 +147,6 @@ export const wcwidth = (function(opts: {nul: number, control: number}): (ucs: nu
     table.subarray(0xffe0, 0xffe7).fill(2);
 
     return function (num: number): number {
-      return table[num];
       if (num < 32) {
         return control | 0;
       }

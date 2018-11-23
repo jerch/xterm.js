@@ -248,6 +248,7 @@ export class SelectionManager extends EventEmitter implements ISelectionManager 
    * selection on Linux.
    */
   public refresh(isNewSelection?: boolean): void {
+    return;
     // Queue the refresh for the renderer
     if (!this._refreshAnimationFrame) {
       this._refreshAnimationFrame = window.requestAnimationFrame(() => this._refresh());

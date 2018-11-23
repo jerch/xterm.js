@@ -15,6 +15,8 @@ import { ICharset } from './core/Types';
 import { Disposable } from './common/Lifecycle';
 import { BufferLineTypedArray } from './BufferLine';
 
+const decode = require('../utf8.js').decode;
+
 /**
  * Map collect to glevel. Used in `selectCharset`.
  */
@@ -114,7 +116,7 @@ class DECRQSS implements IDcsHandler {
  * each function's header comment.
  */
 export class InputHandler extends Disposable implements IInputHandler {
-  private _buffer: Uint16Array = new Uint16Array(4096);
+  private _buffer: Uint16Array = new Uint32Array(500000);
   private _surrogateFirst: string;
 
   constructor(
@@ -298,6 +300,7 @@ export class InputHandler extends Disposable implements IInputHandler {
   }
 
   public parse(data: string): void {
+    //console.log('parse ih', data, decode);
     // Ensure the terminal is not disposed
     if (!this._terminal) {
       return;
@@ -313,19 +316,20 @@ export class InputHandler extends Disposable implements IInputHandler {
     }
 
     // apply leftover surrogate high from last write
-    if (this._surrogateFirst) {
-      data = this._surrogateFirst + data;
-      this._surrogateFirst = '';
-    }
+    //if (this._surrogateFirst) {
+    //  data = this._surrogateFirst + data;
+    //  this._surrogateFirst = '';
+    //}
 
-    if (data.length > this._buffer.length) {
-      this._buffer = new Uint16Array(data.length);
-    }
-    for (let i = 0; i < data.length; ++i) {
-      this._buffer[i] = data.charCodeAt(i);
-    }
+    //if (data.length > this._buffer.length) {
+    //  this._buffer = new Uint16Array(data.length);
+    //}
+    //for (let i = 0; i < data.length; ++i) {
+    //  this._buffer[i] = data.charCodeAt(i);
+    //}
 
-    this._parser.parse(this._buffer, data.length);
+    //const l = decode(new Uint8Array(data), this._buffer);
+    this._parser.parse(this._buffer, decode(new Uint8Array(data), this._buffer));
 
     buffer = this._terminal.buffer;
     if (buffer.x !== cursorStartX || buffer.y !== cursorStartY) {
@@ -334,6 +338,45 @@ export class InputHandler extends Disposable implements IInputHandler {
   }
 
   public print(data: Uint16Array, start: number, end: number): void {
+    const cols: number = this._terminal.cols;
+    const curAttr: number = this._terminal.curAttr;
+    const buffer: IBuffer = this._terminal.buffer;
+    let bufferRow = buffer.lines.get(buffer.y + buffer.ybase);
+    let x = buffer.x;
+    this._terminal.updateRange(buffer.y);
+    for (let stringPosition = start; stringPosition < end; ++stringPosition) {
+      const code = data[stringPosition];
+      const chWidth = wcwidth(code);
+
+      // advance row if overflow
+      if (x + chWidth - 1 >= cols) {
+        if (this._terminal.wraparoundMode) {
+          x = 0;
+          if (buffer.y >= buffer.scrollBottom) {
+            this._terminal.scroll(true);
+          } else {
+            buffer.lines.get(++buffer.y).isWrapped = true;
+          }
+          bufferRow = buffer.lines.get(buffer.y + buffer.ybase);
+        } else {
+          if (chWidth === 2) {
+            // FIXME: check for xterm behavior
+            // What to do here? We got a wide char that does not fit into last cell
+            continue;
+          }
+          x--;
+        }
+      }
+      (bufferRow as any)._data[x * 2] = curAttr;
+      (bufferRow as any)._data[x * 2 + 1] = code | (chWidth << 25);
+      x++;
+
+    }
+    buffer.x = x;
+    this._terminal.updateRange(buffer.y);
+  }
+
+  public print_old(data: Uint16Array, start: number, end: number): void {
     let code: number;
     let chWidth: number;
     const buffer: IBuffer = this._terminal.buffer;
@@ -350,6 +393,7 @@ export class InputHandler extends Disposable implements IInputHandler {
       // char = data.charAt(stringPosition);
       code = data[stringPosition];
 
+      /*
       // surrogate pair handling
       if (0xD800 <= code && code <= 0xDBFF) {
         if (++stringPosition >= end) {
@@ -362,15 +406,16 @@ export class InputHandler extends Disposable implements IInputHandler {
           this._surrogateFirst = String.fromCharCode(code);
           continue;
         }
-        //const second = data[stringPosition];
+        const second = data[stringPosition];
         // if the second part is in surrogate pair range create the high codepoint
         // otherwise fall back to UCS-2 behavior (handle codepoints independently)
-        //if (0xDC00 <= second && second <= 0xDFFF) {
-          code = (code - 0xD800) * 0x400 + data[stringPosition] - 0xDC00 + 0x10000;
-        //} else {
-        //  stringPosition--;
-        //}
+        if (0xDC00 <= second && second <= 0xDFFF) {
+          code = (code - 0xD800) * 0x400 + second - 0xDC00 + 0x10000;
+        } else {
+          stringPosition--;
+        }
       }
+      */
 
       // calculate print space
       // expensive call, therefore we save width in line buffer
@@ -415,6 +460,7 @@ export class InputHandler extends Disposable implements IInputHandler {
         }
         continue;
       }
+      
 
       // goto next line if ch would overflow
       // TODO: needs a global min terminal width of 2
@@ -426,14 +472,12 @@ export class InputHandler extends Disposable implements IInputHandler {
         // automatically wraps to the beginning of the next line
         if (wraparoundMode) {
           buffer.x = 0;
-          buffer.y++;
-          if (buffer.y > buffer.scrollBottom) {
-            buffer.y--;
+          if (buffer.y >= buffer.scrollBottom) {
             this._terminal.scroll(true);
           } else {
             // The line already exists (eg. the initial viewport), mark it as a
             // wrapped line
-            buffer.lines.get(buffer.y).isWrapped = true;
+            buffer.lines.get(++buffer.y).isWrapped = true;
           }
           // row changed, get it again
           bufferRow = buffer.lines.get(buffer.y + buffer.ybase);
@@ -447,6 +491,7 @@ export class InputHandler extends Disposable implements IInputHandler {
         }
       }
 
+      
       // insert mode: move characters to right
       if (insertMode) {
         // right shift cells according to the width
@@ -459,6 +504,7 @@ export class InputHandler extends Disposable implements IInputHandler {
           bufferRow.set(cols - 1, [curAttr, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE]);
         }
       }
+      
 
       // write current char to buffer and advance cursor
       // bufferRow.set(buffer.x++, [curAttr, String.fromCharCode(code), chWidth, code]);
@@ -502,10 +548,10 @@ export class InputHandler extends Disposable implements IInputHandler {
     if (this._terminal.options.convertEol) {
       buffer.x = 0;
     }
-    buffer.y++;
-    if (buffer.y > buffer.scrollBottom) {
-      buffer.y--;
+    if (buffer.y >= buffer.scrollBottom) {
       this._terminal.scroll();
+    } else {
+      buffer.y++;
     }
     // If the end of the line is hit, prevent this action from wrapping around to the next line.
     if (buffer.x >= this._terminal.cols) {

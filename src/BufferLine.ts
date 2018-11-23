@@ -272,9 +272,9 @@ export class BufferLineTypedArray implements IBufferLine {
     }
     this.length = line.length;
     this._combined = {};
-    for (const el in line._combined) {
-      this._combined[el] = line._combined[el];
-    }
+    //for (const el in line._combined) {
+    //  this._combined[el] = line._combined[el];
+    //}
     this.isWrapped = line.isWrapped;
   }
 
