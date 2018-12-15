@@ -14,6 +14,7 @@ import { EscapeSequenceParser } from './EscapeSequenceParser';
 import { ICharset } from './core/Types';
 import { Disposable } from './common/Lifecycle';
 import { BufferLineTypedArray } from './BufferLine';
+import { Utf8Decoder } from 'textdecode';
 
 const decode = require('../utf8.js').decode;
 
@@ -38,7 +39,7 @@ class RequestTerminfo implements IDcsHandler {
   hook(collect: string, params: number[], flag: number): void {
     this._data = '';
   }
-  put(data: Uint16Array, start: number, end: number): void {
+  put(data: Uint32Array, start: number, end: number): void {
     // this._data += data.substring(start, end);
   }
   unhook(): void {
@@ -63,7 +64,7 @@ class DECRQSS implements IDcsHandler {
     this._data = '';
   }
 
-  put(data: Uint16Array, start: number, end: number): void {
+  put(data: Uint32Array, start: number, end: number): void {
     // this._data += data.substring(start, end);
   }
 
@@ -116,8 +117,9 @@ class DECRQSS implements IDcsHandler {
  * each function's header comment.
  */
 export class InputHandler extends Disposable implements IInputHandler {
-  private _buffer: Uint16Array = new Uint32Array(500000);
+  private _buffer: Uint32Array = new Uint32Array(1024);
   private _surrogateFirst: string;
+  private _utf8Decoder: Utf8Decoder = new Utf8Decoder();
 
   constructor(
       protected _terminal: IInputHandlingTerminal,
@@ -299,7 +301,7 @@ export class InputHandler extends Disposable implements IInputHandler {
     this._terminal = null;
   }
 
-  public parse(data: string): void {
+  public parse(data: ArrayBuffer): void {
     //console.log('parse ih', data, decode);
     // Ensure the terminal is not disposed
     if (!this._terminal) {
@@ -329,7 +331,11 @@ export class InputHandler extends Disposable implements IInputHandler {
     //}
 
     //const l = decode(new Uint8Array(data), this._buffer);
-    this._parser.parse(this._buffer, decode(new Uint8Array(data), this._buffer));
+    //this._parser.parse(this._buffer, decode(new Uint8Array(data), this._buffer));
+    if (data.byteLength > this._buffer.length) {
+      this._buffer = new Uint32Array(data.byteLength);
+    }
+    this._parser.parse(this._buffer, this._utf8Decoder.decode(new Uint8Array(data), this._buffer));
 
     buffer = this._terminal.buffer;
     if (buffer.x !== cursorStartX || buffer.y !== cursorStartY) {
@@ -337,7 +343,7 @@ export class InputHandler extends Disposable implements IInputHandler {
     }
   }
 
-  public print(data: Uint16Array, start: number, end: number): void {
+  public print_new(data: Uint16Array, start: number, end: number): void {
     const cols: number = this._terminal.cols;
     const curAttr: number = this._terminal.curAttr;
     const buffer: IBuffer = this._terminal.buffer;
@@ -376,7 +382,7 @@ export class InputHandler extends Disposable implements IInputHandler {
     this._terminal.updateRange(buffer.y);
   }
 
-  public print_old(data: Uint16Array, start: number, end: number): void {
+  public print(data: Uint32Array, start: number, end: number): void {
     let code: number;
     let chWidth: number;
     const buffer: IBuffer = this._terminal.buffer;

@@ -83,7 +83,6 @@ app.ws('/terminals/:pid', function (ws, req) {
   */
   function buffer(socket, timeout) {
     let buffer = [];
-    let pos = 0;
     let sender = null;
     return (data) => {
       buffer.push(data);
@@ -96,7 +95,7 @@ app.ws('/terminals/:pid', function (ws, req) {
       }
     };
   }
-  const send = buffer(ws, 5);
+  const send = buffer(ws, 10);
 
   term.on('data', function(data) {
     try {

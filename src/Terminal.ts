@@ -1324,6 +1324,12 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
    * @param data The text to write to the terminal.
    */
   public write(data: string): void {
+
+    this._inputHandler.parse(data as unknown as ArrayBuffer);
+    this.updateRange(this.buffer.y);
+    this.refresh(this._refreshStart, this._refreshEnd);
+    return;
+
     // Ensure the terminal isn't disposed
     if (this._isDisposed) {
       return;
@@ -1382,7 +1388,7 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
       // state of the parser resets to 0 after exiting parser.parse. This change
       // just sets the state back based on the correct return statement.
 
-      this._inputHandler.parse(data);
+      this._inputHandler.parse(data as unknown as ArrayBuffer);
 
       this.updateRange(this.buffer.y);
       this.refresh(this._refreshStart, this._refreshEnd);

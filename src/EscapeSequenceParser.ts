@@ -192,7 +192,7 @@ export const VT500_TRANSITION_TABLE = (function (): TransitionTable {
  */
 class DcsDummy implements IDcsHandler {
   hook(collect: string, params: number[], flag: number): void { }
-  put(data: Uint16Array, start: number, end: number): void { }
+  put(data: Uint32Array, start: number, end: number): void { }
   unhook(): void { }
 }
 
@@ -218,7 +218,7 @@ export class EscapeSequenceParser extends Disposable implements IEscapeSequenceP
   protected _collect: string;
 
   // handler lookup containers
-  protected _printHandler: (data: Uint16Array, start: number, end: number) => void;
+  protected _printHandler: (data: Uint32Array, start: number, end: number) => void;
   protected _executeHandlers: any;
   protected _csiHandlers: any;
   protected _escHandlers: any;
@@ -228,7 +228,7 @@ export class EscapeSequenceParser extends Disposable implements IEscapeSequenceP
   protected _errorHandler: (state: IParsingState) => IParsingState;
 
   // fallback handlers
-  protected _printHandlerFb: (data: Uint16Array, start: number, end: number) => void;
+  protected _printHandlerFb: (data: Uint32Array, start: number, end: number) => void;
   protected _executeHandlerFb: (code: number) => void;
   protected _csiHandlerFb: (collect: string, params: number[], flag: number) => void;
   protected _escHandlerFb: (collect: string, flag: number) => void;
@@ -284,7 +284,7 @@ export class EscapeSequenceParser extends Disposable implements IEscapeSequenceP
     this._errorHandler = null;
   }
 
-  setPrintHandler(callback: (data: Uint16Array, start: number, end: number) => void): void {
+  setPrintHandler(callback: (data: Uint32Array, start: number, end: number) => void): void {
     this._printHandler = callback;
   }
   clearPrintHandler(): void {
@@ -356,7 +356,7 @@ export class EscapeSequenceParser extends Disposable implements IEscapeSequenceP
     this._activeDcsHandler = null;
   }
 
-  parse(data: Uint16Array, len: number): void {
+  parse(data: Uint32Array, len: number): void {
     let code = 0;
     let transition = 0;
     let error = false;
