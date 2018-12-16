@@ -146,12 +146,125 @@ export class Buffer implements IBuffer {
     this.setupTabStops();
   }
 
+  private _reflow_resize(newCols: number, newRows: number): void {
+    if (!this.lines.length) {
+      return;
+    }
+    if (newCols === this._terminal.cols && newRows === this._terminal.rows) {
+      // this is needed for now so setting scrollback in demo keeps working
+      // FIXME: decouple scrollback setting from resize
+      this.lines.maxLength = this._getCorrectBufferLength(newRows);
+      return;
+    }
+
+    // get unwrapped line ranges with cell lengths
+    let unwrapped = [];
+    let lastEntry: {first: number, last: number, width: number, wLast: number} = {first: 0, last: 0, width: this._terminal.cols, wLast: 0};
+    for (let i = 1; i < this.lines.length; ++i) {
+      const line = this.lines.get(i);
+      if (!line.isWrapped) {
+        lastEntry.wLast = this.lines.get(lastEntry.last).getTrimmedLength();
+        lastEntry.width -= this._terminal.cols - lastEntry.wLast;
+        unwrapped.push(lastEntry);
+        lastEntry = {first: i, last: i, width: 0, wLast: 0};
+      }
+      lastEntry.width += this._terminal.cols;
+      lastEntry.last = i;
+    }
+    lastEntry.wLast = this.lines.get(lastEntry.last).getTrimmedLength();
+    lastEntry.width -= this._terminal.cols - lastEntry.wLast;
+    unwrapped.push(lastEntry);
+    // trim empty lines from the end to avoid appending nonsense empty lines
+    let unwrappedEnd = unwrapped.length - 1;
+    while (!unwrapped[unwrappedEnd].width && unwrappedEnd) {
+      unwrappedEnd--;
+    }
+    console.log(unwrapped);
+
+    // create new buffer line list
+    const maxLength = this._getCorrectBufferLength(newRows);
+    const lines = new CircularList<IBufferLine>(maxLength);
+
+    // find start line
+    let start = 0;
+    let widthCount = 0;
+    for (let i = unwrappedEnd; i >= 0; --i) {
+      widthCount += Math.ceil(unwrapped[i].width / newCols) || 1;
+      if (widthCount >= maxLength) {
+        start = i;
+        break;
+      }
+    }
+
+    // helper function - to be removed...
+    const getBlankLine = (cols: number, attr: number, isWrapped: boolean) => {
+      const fillCharData: CharData = [attr, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE];
+      return new this._bufferLineConstructor(cols, fillCharData, isWrapped);
+    }
+
+    // iterate over all unwrapped line ranges
+    let pos = 0;
+    for (let i = start; i <= unwrappedEnd; ++i) {
+      pos = 0;
+      let newLine = getBlankLine(newCols, DEFAULT_ATTR, false); // first line is never wrapped
+      chunk: for (let ol = unwrapped[i].first; ol < unwrapped[i].last; ++ol) {
+        const oldLine = this.lines.get(ol);
+        let oldPos = 0;
+        while (oldPos < oldLine.length) {
+          while (pos < newLine.length) {
+            newLine.set(pos++, oldLine.get(oldPos++));
+            if (oldPos >= oldLine.length) {
+              continue chunk;
+            }
+          }
+          lines.push(newLine);
+          newLine = getBlankLine(newCols, DEFAULT_ATTR, true);
+          pos = 0;
+        }
+      }
+      // we are at the last row of the unwrapped line
+      // copy only up to right trim width
+      const lastRowWidth = unwrapped[i].wLast;
+      const oldLine = this.lines.get(unwrapped[i].last);
+      let oldPos = 0;
+      oldLoop: while (oldPos < lastRowWidth) {
+        while (pos < newLine.length) {
+          newLine.set(pos++, oldLine.get(oldPos++));
+          if (oldPos >= lastRowWidth) {
+            break oldLoop;
+          }
+        }
+        lines.push(newLine);
+        newLine = getBlankLine(newCols, DEFAULT_ATTR, true);
+        pos = 0;
+      }
+      lines.push(newLine);
+    }
+
+    // fill at least up to newRows
+    while (lines.length < newRows) {
+      lines.push(getBlankLine(newCols, DEFAULT_ATTR, false));
+    }
+
+    // FIXME: cursor repositioning and flaws in offsets
+    if (lines.length < maxLength) {
+      this.ydisp += lines.length - this.lines.length - (newRows - this._terminal.rows); 
+      this.ybase += lines.length - this.lines.length - (newRows - this._terminal.rows);
+    }
+
+    // apply new list to buffer and adjust bottom
+    this.lines = lines;
+    this.scrollBottom = newRows - 1;
+  }
+
   /**
    * Resizes the buffer, adjusting its data accordingly.
    * @param newCols The new number of columns.
    * @param newRows The new number of rows.
    */
   public resize(newCols: number, newRows: number): void {
+    return this._reflow_resize(newCols, newRows);
+
     // Increase max length if needed before adjustments to allow space to fill
     // as required.
     const newMaxLength = this._getCorrectBufferLength(newRows);
