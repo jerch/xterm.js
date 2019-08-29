@@ -16,7 +16,8 @@
     "paths": {
       "common/*": [ "../../src/common/*" ],
       "browser/*": [ "../../src/browser/*" ],
-      "Terminal": [ "../../src/Terminal" ]
+      "Terminal": [ "../../src/Terminal" ],
+      "addons/xterm-addon-serialize/src/*": ["../../addons/xterm-addon-serialize/src/*"]
     },
   },
   "include": [

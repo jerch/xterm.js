@@ -878,6 +878,13 @@ declare module 'xterm' {
      * @param y The line index to get.
      */
     getLine(y: number): IBufferLine | undefined;
+
+    /**
+     * Creates an empty cell object suitable as a cell reference in
+     * `line.getCell(x, cell)`. Use this to avoid costly recreation of
+     * cell objects when dealing with tons of cells.
+     */
+    getNullCell(): IBufferCell;
   }
 
   /**
@@ -892,13 +899,10 @@ declare module 'xterm' {
     /**
      * Gets a cell from the line, or undefined if the line index does not exist.
      *
-     * Note that the result of this function should be used immediately after
-     * calling as when the terminal updates it could lead to unexpected
-     * behavior.
-     *
      * @param x The character index to get.
+     * @param cell Optional cell object to load data into.
      */
-    getCell(x: number): IBufferCell | undefined;
+    getCell(x: number, cell?: IBufferCell): IBufferCell | undefined;
 
     /**
      * Gets the line as a string. Note that this is gets only the string for the
@@ -909,6 +913,36 @@ declare module 'xterm' {
      * @param endColumn The column to end at (exclusive).
      */
     translateToString(trimRight?: boolean, startColumn?: number, endColumn?: number): string;
+  }
+
+  /**
+   * Represents foreground and background color settings of a cell.
+   */
+  interface IBufferCellColor {
+    /**
+     * Color mode of the color setting.
+     * - RGB        Color is an RGB color, use `.rgb` to grab the different channels.
+     * - P256       Color is an indexed value of the 256 color palette.
+     * - P16        Color is an indexed value of the 8 color palette (+8 for AIX bright colors).
+     * - DEFAULT    No color set, thus default color should be used.
+     */
+    colorMode: 'RGB' | 'P256' | 'P16' | 'DEFAULT';
+
+    /**
+     * Color value set in the current color mode.
+     * Note that the color value can only be interpreted in conjunction
+     * with the color mode:
+     * - RGB      color contains 8 bit channels in RGB32 bitorder, e.g. red << 16 | green << 8 | blue
+     * - P256     color contains indexed value 0..255
+     * - P16      color contains indexed value 0..15
+     * - DEFAULT  color always contains -1
+     */
+    color: number;
+
+    /**
+     * Helper to get RGB channels from color mode RGB. Reports channels as [red, green, blue].
+     */
+    rgb: number[];
   }
 
   /**
@@ -928,6 +962,45 @@ declare module 'xterm' {
      * - This is `0` for cells immediately following cells with a width of `2`.
      */
     readonly width: number;
+
+    /**
+     * Text attribute flags like bold, underline etc.
+     */
+    readonly flags: {[flag: string]: boolean};
+
+    /**
+     * Foreground color.
+     */
+    readonly fg: IBufferCellColor;
+
+    /**
+     * Background color.
+     */
+    readonly bg: IBufferCellColor;
+
+    /**
+     * Whether cells have the same text attributes (flags and colors).
+     * @param other Other cell.
+     */
+    equalAttibutes(other: IBufferCell): boolean;
+
+    /**
+     * Whether cells have the same text attribute flags.
+     * @param other Other cell.
+     */
+    equalFlags(other: IBufferCell): boolean;
+
+    /**
+     * Whether cells have the same foreground color.
+     * @param other Other cell.
+     */
+    equalFg(other: IBufferCell): boolean;
+
+    /**
+     * Whether cells have the same background color.
+     * @param other Other cell.
+     */
+    equalBg(other: IBufferCell): boolean;
   }
 
   /**

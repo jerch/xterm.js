@@ -3,7 +3,7 @@
  * @license MIT
  */
 
-import { Terminal as ITerminalApi, ITerminalOptions, IMarker, IDisposable, ILinkMatcherOptions, ITheme, ILocalizableStrings, ITerminalAddon, ISelectionPosition, IBuffer as IBufferApi, IBufferLine as IBufferLineApi, IBufferCell as IBufferCellApi, IParser, IFunctionIdentifier } from 'xterm';
+import { Terminal as ITerminalApi, ITerminalOptions, IMarker, IDisposable, ILinkMatcherOptions, ITheme, ILocalizableStrings, ITerminalAddon, ISelectionPosition, IBuffer as IBufferApi, IBufferLine as IBufferLineApi, IBufferCell as IBufferCellApi, IParser, IFunctionIdentifier, IBufferCellColor as IBufferCellColorApi } from 'xterm';
 import { ITerminal } from '../Types';
 import { IBufferLine } from 'common/Types';
 import { IBuffer } from 'common/buffer/Types';
@@ -12,6 +12,9 @@ import * as Strings from '../browser/LocalizableStrings';
 import { IEvent } from 'common/EventEmitter';
 import { AddonManager } from './AddonManager';
 import { IParams } from 'common/parser/Types';
+import { CellData } from '../../out/common/buffer/CellData';
+import { Attributes, FgFlags, BgFlags } from '../../out/common/buffer/Constants';
+import { AttributeData } from '../../out/common/buffer/AttributeData';
 
 export class Terminal implements ITerminalApi {
   private _core: ITerminal;
@@ -199,27 +202,96 @@ class BufferApiView implements IBufferApi {
     }
     return new BufferLineApiView(line);
   }
+  public getNullCell(): IBufferCellApi {
+    return new BufferCellApiView(new CellData());
+  }
 }
 
 class BufferLineApiView implements IBufferLineApi {
   constructor(private _line: IBufferLine) {}
 
   public get isWrapped(): boolean { return this._line.isWrapped; }
-  public getCell(x: number): IBufferCellApi | undefined {
+  public getCell(x: number, cell?: BufferCellApiView): IBufferCellApi | undefined {
     if (x < 0 || x >= this._line.length) {
       return undefined;
     }
-    return new BufferCellApiView(this._line, x);
+    if (cell) {
+      this._line.loadCell(x, cell.cell);
+      return cell;
+    }
+    return new BufferCellApiView(this._line.loadCell(x, new CellData()));
   }
   public translateToString(trimRight?: boolean, startColumn?: number, endColumn?: number): string {
     return this._line.translateToString(trimRight, startColumn, endColumn);
   }
 }
 
+const fgFlagMask = FgFlags.BOLD | FgFlags.BLINK | FgFlags.INVERSE | FgFlags.INVISIBLE | FgFlags.UNDERLINE;
+const bgFlagMask = BgFlags.DIM | BgFlags.ITALIC;
+const colorMask = Attributes.CM_MASK | Attributes.RGB_MASK;
+
 class BufferCellApiView implements IBufferCellApi {
-  constructor(private _line: IBufferLine, private _x: number) {}
-  public get char(): string { return this._line.getString(this._x); }
-  public get width(): number { return this._line.getWidth(this._x); }
+  public flags: {[flag: string]: boolean};
+  public fg: IBufferCellColorApi;
+  public bg: IBufferCellColorApi;
+  constructor(public cell: CellData) {
+    this.flags = {
+      get bold(): boolean { return !!(cell.fg & FgFlags.BOLD); },
+      get underline(): boolean { return !!(cell.fg & FgFlags.UNDERLINE); },
+      get blink(): boolean { return !!(cell.fg & FgFlags.BLINK); },
+      get inverse(): boolean { return !!(cell.fg & FgFlags.INVERSE); },
+      get invisible(): boolean { return !!(cell.fg & FgFlags.INVERSE); },
+      get italic(): boolean { return !!(cell.bg & BgFlags.ITALIC); },
+      get dim(): boolean { return !!(cell.bg & BgFlags.DIM); }
+    };
+    this.fg = {
+      get colorMode(): "RGB" | "P256" | "P16" | "DEFAULT" {
+        switch (cell.getFgColorMode()) {
+          case Attributes.CM_RGB:
+            return 'RGB';
+          case Attributes.CM_P256:
+            return 'P256';
+          case Attributes.CM_P16:
+            return 'P16';
+          default:
+            return 'DEFAULT';
+        }
+      },
+      get color(): number { return cell.getFgColor(); },
+      get rgb(): number[] { return AttributeData.toColorRGB(cell.getFgColor()); }
+    };
+    this.bg = {
+      get colorMode(): "RGB" | "P256" | "P16" | "DEFAULT" {
+        switch (cell.getBgColorMode()) {
+          case Attributes.CM_RGB:
+            return 'RGB';
+          case Attributes.CM_P256:
+            return 'P256';
+          case Attributes.CM_P16:
+            return 'P16';
+          default:
+            return 'DEFAULT';
+        }
+      },
+      get color(): number { return cell.getBgColor(); },
+      get rgb(): number[] { return AttributeData.toColorRGB(cell.getBgColor()); }
+    };
+  }
+  public get char(): string { return this.cell.getChars(); }
+  public get width(): number { return this.cell.getWidth(); }
+  public equalAttibutes(other: BufferCellApiView): boolean {
+    return this.cell.fg === other.cell.fg && this.cell.bg === other.cell.bg;
+  }
+  public equalFlags(other: BufferCellApiView): boolean {
+    return (this.cell.fg & fgFlagMask) === (other.cell.fg & fgFlagMask)
+      && (this.cell.bg & bgFlagMask) === (other.cell.bg & bgFlagMask);
+  }
+  public equalFg(other: BufferCellApiView): boolean {
+    return (this.cell.fg & colorMask) === (other.cell.fg & colorMask);
+  }
+  public equalBg(other: BufferCellApiView): boolean {
+    return (this.cell.bg & colorMask) === (other.cell.bg & colorMask);
+  }
 }
 
 class ParserApi implements IParser {

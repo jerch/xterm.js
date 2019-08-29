@@ -15,6 +15,8 @@ import { SearchAddon, ISearchOptions } from '../addons/xterm-addon-search/out/Se
 import { WebLinksAddon } from '../addons/xterm-addon-web-links/out/WebLinksAddon';
 import { WebglAddon } from '../addons/xterm-addon-webgl/out/WebglAddon';
 
+import { SerializeAddon } from '../addons/xterm-addon-serialize/out/SerializeAddon';
+
 // Use webpacked version (yarn package)
 // import { Terminal } from '../lib/xterm';
 // import { AttachAddon } from 'xterm-addon-attach';
@@ -45,6 +47,7 @@ let protocol;
 let socketURL;
 let socket;
 let pid;
+let serializeAddon: SerializeAddon;
 
 const terminalContainer = document.getElementById('terminal-container');
 const actionElements = {
@@ -113,6 +116,9 @@ function createTerminal(): void {
   typedTerm.loadAddon(searchAddon);
   fitAddon = new FitAddon();
   typedTerm.loadAddon(fitAddon);
+
+  serializeAddon = new SerializeAddon();
+  typedTerm.loadAddon(serializeAddon);
 
   window.term = term;  // Expose `term` to window for debugging purposes
   term.onResize((size: { cols: number, rows: number }) => {
