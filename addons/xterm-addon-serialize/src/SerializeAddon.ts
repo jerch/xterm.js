@@ -66,18 +66,18 @@ export class SerializeAddon implements ITerminalAddon {
     const switches: number[] = [];
     // flags
     if (!oldCell.equalFlags(newCell)) {
-      if (oldCell.flags.bold !== newCell.flags.bold) switches.push(newCell.flags.bold ? 1 : 22);
-      if (oldCell.flags.underline !== newCell.flags.underline) switches.push(newCell.flags.underline ? 4 : 24);
-      if (oldCell.flags.inverse !== newCell.flags.inverse) switches.push(newCell.flags.inverse ? 7 : 27);
-      if (oldCell.flags.invisible !== newCell.flags.invisible) switches.push(newCell.flags.invisible ? 8 : 28);
-      if (oldCell.flags.blink !== newCell.flags.blink) switches.push(newCell.flags.blink ? 5 : 25);
-      if (oldCell.flags.italic !== newCell.flags.italic) switches.push(newCell.flags.italic ? 3 : 23);
-      if (oldCell.flags.dim !== newCell.flags.dim) switches.push(newCell.flags.dim ? 2 : 22);
+      if (oldCell.isBold() !== newCell.isBold()) switches.push(newCell.isBold() ? 1 : 22);
+      if (oldCell.isUnderline() !== newCell.isUnderline()) switches.push(newCell.isUnderline() ? 4 : 24);
+      if (oldCell.isInverse() !== newCell.isInverse()) switches.push(newCell.isInverse() ? 7 : 27);
+      if (oldCell.isInvisible() !== newCell.isInvisible()) switches.push(newCell.isInvisible() ? 8 : 28);
+      if (oldCell.isBlink() !== newCell.isBlink()) switches.push(newCell.isBlink() ? 5 : 25);
+      if (oldCell.isItalic() !== newCell.isItalic()) switches.push(newCell.isItalic() ? 3 : 23);
+      if (oldCell.isDim() !== newCell.isDim()) switches.push(newCell.isDim() ? 2 : 22);
     }
     // colors
     if (!oldCell.equalFg(newCell)) {
-      const color = newCell.fg.color;
-      switch (newCell.fg.colorMode) {
+      const color = newCell.getFgColor();
+      switch (newCell.getFgColorMode()) {
         case 'RGB':
           switches.push(38);
           switches.push(2);
@@ -98,8 +98,8 @@ export class SerializeAddon implements ITerminalAddon {
       }
     }
     if (!oldCell.equalBg(newCell)) {
-      const color = newCell.bg.color;
-      switch (newCell.bg.colorMode) {
+      const color = newCell.getBgColor();
+      switch (newCell.getBgColorMode()) {
         case 'RGB':
           switches.push(48);
           switches.push(2);
@@ -153,8 +153,8 @@ export class SerializeAddon implements ITerminalAddon {
           sLine.push(this._extractAttributes(oldCell, newCell));
           oldCell = newCell;
         }
-        sLine.push(newCell.char || ' ');
-        x += newCell.width || 1;  // always advance by 1!
+        sLine.push(newCell.getChars() || ' ');
+        x += newCell.getWidth() || 1;  // always advance by 1!
       }
       result.push(sLine.join(''));
     }
@@ -263,7 +263,7 @@ export class SerializeAddon implements ITerminalAddon {
           oldCell = newCell;
         }
         sLine.push(newCell.getChars() || ' ');
-        x += newCell.getWidth();
+        x += newCell.getWidth() || 1;
       }
       result.push(sLine.join(''));
     }

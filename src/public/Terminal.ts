@@ -3,7 +3,7 @@
  * @license MIT
  */
 
-import { Terminal as ITerminalApi, ITerminalOptions, IMarker, IDisposable, ILinkMatcherOptions, ITheme, ILocalizableStrings, ITerminalAddon, ISelectionPosition, IBuffer as IBufferApi, IBufferLine as IBufferLineApi, IBufferCell as IBufferCellApi, IParser, IFunctionIdentifier, IBufferCellColor as IBufferCellColorApi } from 'xterm';
+import { Terminal as ITerminalApi, ITerminalOptions, IMarker, IDisposable, ILinkMatcherOptions, ITheme, ILocalizableStrings, ITerminalAddon, ISelectionPosition, IBuffer as IBufferApi, IBufferLine as IBufferLineApi, IBufferCell as IBufferCellApi, IParser, IFunctionIdentifier } from 'xterm';
 import { ITerminal } from '../Types';
 import { IBufferLine } from 'common/Types';
 import { IBuffer } from 'common/buffer/Types';
@@ -231,54 +231,51 @@ const bgFlagMask = BgFlags.DIM | BgFlags.ITALIC;
 const colorMask = Attributes.CM_MASK | Attributes.RGB_MASK;
 
 class BufferCellApiView implements IBufferCellApi {
-  public flags: {[flag: string]: boolean};
-  public fg: IBufferCellColorApi;
-  public bg: IBufferCellColorApi;
-  constructor(public cell: CellData) {
-    this.flags = {
-      get bold(): boolean { return !!(cell.fg & FgFlags.BOLD); },
-      get underline(): boolean { return !!(cell.fg & FgFlags.UNDERLINE); },
-      get blink(): boolean { return !!(cell.fg & FgFlags.BLINK); },
-      get inverse(): boolean { return !!(cell.fg & FgFlags.INVERSE); },
-      get invisible(): boolean { return !!(cell.fg & FgFlags.INVERSE); },
-      get italic(): boolean { return !!(cell.bg & BgFlags.ITALIC); },
-      get dim(): boolean { return !!(cell.bg & BgFlags.DIM); }
-    };
-    this.fg = {
-      get colorMode(): "RGB" | "P256" | "P16" | "DEFAULT" {
-        switch (cell.getFgColorMode()) {
-          case Attributes.CM_RGB:
-            return 'RGB';
-          case Attributes.CM_P256:
-            return 'P256';
-          case Attributes.CM_P16:
-            return 'P16';
-          default:
-            return 'DEFAULT';
-        }
-      },
-      get color(): number { return cell.getFgColor(); },
-      get rgb(): number[] { return AttributeData.toColorRGB(cell.getFgColor()); }
-    };
-    this.bg = {
-      get colorMode(): "RGB" | "P256" | "P16" | "DEFAULT" {
-        switch (cell.getBgColorMode()) {
-          case Attributes.CM_RGB:
-            return 'RGB';
-          case Attributes.CM_P256:
-            return 'P256';
-          case Attributes.CM_P16:
-            return 'P16';
-          default:
-            return 'DEFAULT';
-        }
-      },
-      get color(): number { return cell.getBgColor(); },
-      get rgb(): number[] { return AttributeData.toColorRGB(cell.getBgColor()); }
-    };
-  }
+  constructor(public cell: CellData) { }
   public get char(): string { return this.cell.getChars(); }
   public get width(): number { return this.cell.getWidth(); }
+
+  public getChars(): string { return this.cell.getChars(); }
+  public getWidth(): number { return this.cell.getWidth(); }
+
+  public getFgColorMode(): "RGB" | "P256" | "P16" | "DEFAULT" {
+    switch (this.cell.fg & Attributes.CM_MASK) {
+      case Attributes.CM_RGB:
+        return 'RGB';
+      case Attributes.CM_P256:
+        return 'P256';
+      case Attributes.CM_P16:
+        return 'P16';
+      default:
+        return 'DEFAULT';
+    }
+  }
+  public getFgColor(): number { return this.cell.getFgColor(); }
+  public getFgRgbChannels(): number[] { return AttributeData.toColorRGB(this.cell.getFgColor()); }
+
+  public getBgColorMode(): "RGB" | "P256" | "P16" | "DEFAULT" {
+    switch (this.cell.bg & Attributes.CM_MASK) {
+      case Attributes.CM_RGB:
+        return 'RGB';
+      case Attributes.CM_P256:
+        return 'P256';
+      case Attributes.CM_P16:
+        return 'P16';
+      default:
+        return 'DEFAULT';
+    }
+  }
+  public getBgColor(): number { return this.cell.getBgColor(); }
+  public getBgRgbChannels(): number[] { return AttributeData.toColorRGB(this.cell.getBgColor()); }
+
+  public isBold(): number { return this.cell.fg & FgFlags.BOLD; }
+  public isUnderline(): number { return this.cell.fg & FgFlags.UNDERLINE; }
+  public isBlink(): number { return this.cell.fg & FgFlags.BLINK; }
+  public isInverse(): number { return this.cell.fg & FgFlags.INVERSE; }
+  public isInvisible(): number { return this.cell.fg & FgFlags.INVERSE; }
+  public isItalic(): number { return this.cell.bg & BgFlags.ITALIC; }
+  public isDim(): number { return this.cell.bg & BgFlags.DIM; }
+
   public equalAttibutes(other: BufferCellApiView): boolean {
     return this.cell.fg === other.cell.fg && this.cell.bg === other.cell.bg;
   }

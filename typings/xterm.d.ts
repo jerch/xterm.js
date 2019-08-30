@@ -916,36 +916,6 @@ declare module 'xterm' {
   }
 
   /**
-   * Represents foreground and background color settings of a cell.
-   */
-  interface IBufferCellColor {
-    /**
-     * Color mode of the color setting.
-     * - RGB        Color is an RGB color, use `.rgb` to grab the different channels.
-     * - P256       Color is an indexed value of the 256 color palette.
-     * - P16        Color is an indexed value of the 8 color palette (+8 for AIX bright colors).
-     * - DEFAULT    No color set, thus default color should be used.
-     */
-    colorMode: 'RGB' | 'P256' | 'P16' | 'DEFAULT';
-
-    /**
-     * Color value set in the current color mode.
-     * Note that the color value can only be interpreted in conjunction
-     * with the color mode:
-     * - RGB      color contains 8 bit channels in RGB32 bitorder, e.g. red << 16 | green << 8 | blue
-     * - P256     color contains indexed value 0..255
-     * - P16      color contains indexed value 0..15
-     * - DEFAULT  color always contains -1
-     */
-    color: number;
-
-    /**
-     * Helper to get RGB channels from color mode RGB. Reports channels as [red, green, blue].
-     */
-    rgb: number[];
-  }
-
-  /**
    * Represents a single cell in the terminal's buffer.
    */
   interface IBufferCell {
@@ -963,20 +933,29 @@ declare module 'xterm' {
      */
     readonly width: number;
 
-    /**
-     * Text attribute flags like bold, underline etc.
-     */
-    readonly flags: {[flag: string]: boolean};
+    getChars(): string;
+    getWidth(): number;
 
     /**
-     * Foreground color.
+     * Text attribute flags.
      */
-    readonly fg: IBufferCellColor;
+    isBold(): number;
+    isUnderline(): number;
+    isBlink(): number;
+    isInverse(): number;
+    isInvisible(): number;
+    isItalic(): number;
+    isDim(): number;
 
-    /**
-     * Background color.
-     */
-    readonly bg: IBufferCellColor;
+    // foreground color
+    getFgColorMode(): 'RGB' | 'P256' | 'P16' | 'DEFAULT';
+    getFgColor(): number;
+    getFgRgbChannels(): number[];
+
+    // background color
+    getBgColorMode(): 'RGB' | 'P256' | 'P16' | 'DEFAULT';
+    getBgColor(): number;
+    getBgRgbChannels(): number[];
 
     /**
      * Whether cells have the same text attributes (flags and colors).

@@ -27,7 +27,7 @@ perfContext('Terminal: sh -c "ls -lR /usr/lib | lolcat -f"', () => {
 
   before(async () => {
     // grab output from "ls -lR /usr"
-    const p = spawn('sh', ['-c', 'ls -lR /usr/lib'], {
+    const p = spawn('sh', ['-c', 'ls -lR /usr/'], {
       name: 'xterm-256color',
       cols: 80,
       rows: 25,
